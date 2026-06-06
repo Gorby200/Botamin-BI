@@ -1,0 +1,252 @@
+@import "tailwindcss";
+@import "@fontsource-variable/fraunces";
+@import "@fontsource-variable/hanken-grotesk";
+@import "@fontsource/geist-mono";
+
+@theme {
+  /* Warm paper off-white canvas */
+  --color-bg: oklch(0.985 0.006 85);
+  --color-bg-card: oklch(0.995 0.004 85);
+  --color-bg-card-hover: oklch(0.99 0.005 85);
+
+  /* Warm near-black ink */
+  --color-ink: oklch(0.24 0.012 60);
+  --color-ink-secondary: oklch(0.45 0.015 60);
+  --color-ink-tertiary: oklch(0.62 0.012 60);
+  --color-ink-muted: oklch(0.78 0.008 60);
+
+  /* Accent: deep teal/petrol */
+  --color-accent: oklch(0.52 0.08 200);
+  --color-accent-light: oklch(0.65 0.07 200);
+  --color-accent-subtle: oklch(0.92 0.03 200);
+  --color-accent-bg: oklch(0.96 0.02 200);
+
+  /* Secondary: warm clay/amber */
+  --color-secondary: oklch(0.62 0.08 55);
+  --color-secondary-light: oklch(0.75 0.07 55);
+  --color-secondary-subtle: oklch(0.93 0.03 55);
+
+  /* Semantic */
+  --color-success: oklch(0.65 0.12 145);
+  --color-warning: oklch(0.72 0.12 75);
+  --color-danger: oklch(0.62 0.15 25);
+
+  /* Metric bands (good / ok / bad / neutral) — text + subtle fill */
+  --color-band-good: oklch(0.55 0.11 150);
+  --color-band-good-bg: oklch(0.95 0.04 150);
+  --color-band-ok: oklch(0.58 0.10 75);
+  --color-band-ok-bg: oklch(0.95 0.05 80);
+  --color-band-bad: oklch(0.55 0.16 25);
+  --color-band-bad-bg: oklch(0.95 0.04 25);
+  --color-band-neutral: oklch(0.55 0.01 60);
+  --color-band-neutral-bg: oklch(0.95 0.005 60);
+
+  /* Funnel stage gradient stops */
+  --color-stage-s0: oklch(0.78 0.04 200);
+  --color-stage-s1: oklch(0.68 0.06 190);
+  --color-stage-s2: oklch(0.58 0.08 195);
+  --color-stage-s3: oklch(0.48 0.10 185);
+  --color-stage-s4: oklch(0.38 0.10 190);
+
+  /* Borders & shadows */
+  --color-border: oklch(0.90 0.006 85);
+  --color-border-strong: oklch(0.82 0.01 85);
+  --shadow-card: 0 1px 3px oklch(0.15 0.01 60 / 0.04), 0 1px 2px oklch(0.15 0.01 60 / 0.02);
+  --shadow-card-hover: 0 4px 12px oklch(0.15 0.01 60 / 0.06), 0 2px 4px oklch(0.15 0.01 60 / 0.03);
+  --shadow-drawer: -8px 0 30px oklch(0.15 0.01 60 / 0.08);
+
+  /* Radii */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+
+  /* Font families */
+  --font-display: "Fraunces Variable", serif;
+  --font-sans: "Hanken Grotesk Variable", system-ui, sans-serif;
+  --font-mono: "Geist Mono", monospace;
+
+  /* Transitions */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 400ms;
+}
+
+/* ─── Base Styles ─── */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: var(--font-sans);
+  background: var(--color-bg);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--color-bg);
+}
+
+/* Subtle grain texture */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.018;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  z-index: 9999;
+}
+
+/* ─── Typography ─── */
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--color-ink);
+}
+
+/* ─── Scrollbar ─── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-ink-muted);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-ink-tertiary);
+}
+
+/* ─── Selection ─── */
+::selection {
+  background: var(--color-accent-subtle);
+  color: var(--color-ink);
+}
+
+/* ─── Tabular numbers for data ─── */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono);
+}
+
+/* ─── Metric numbers ───
+   The OLD design rendered big KPI values in Fraunces (serif) — they visually
+   "jumped out" of the clean grotesk UI. Data numbers should be the GROTESK
+   tabular face: modern, neutral, tight. Serif (Fraunces) is for prose headings
+   ONLY. This single rule is the core of the typography fix. */
+.stat-num {
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  font-feature-settings: "ss01";
+}
+
+/* ─── Typography Utilities ───
+   Consistent text patterns across all pages. Use these classes instead of
+   inline styles for headers, labels, and metadata. */
+
+/* Page titles (H1) */
+.page-title {
+  font-family: var(--font-display);
+  font-size: 1.5rem; /* text-2xl */
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+/* Section headers (H2) with optional icon */
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+.section-label {
+  font-size: 0.875rem; /* text-sm */
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-ink-secondary);
+}
+.section-hint {
+  font-size: 0.75rem; /* text-xs */
+  color: var(--color-ink-muted);
+}
+
+/* Standard icon sizes for consistency */
+.icon-xs { width: 12px; height: 12px; }
+.icon-sm { width: 14px; height: 14px; }
+.icon-md { width: 16px; height: 16px; }
+.icon-lg { width: 18px; height: 18px; }
+
+/* Meta text (dates, sources, etc.) */
+.meta-text {
+  font-size: 0.75rem; /* text-xs */
+  color: var(--color-ink-muted);
+  line-height: 1.4;
+}
+
+/* Card headers */
+.card-title {
+  font-size: 0.875rem; /* text-sm */
+  font-weight: 500;
+  color: var(--color-ink);
+}
+.card-subtitle {
+  font-size: 0.75rem; /* text-xs */
+  color: var(--color-ink-tertiary);
+  line-height: 1.4;
+}
+
+/* Band colour helpers (text + subtle background chip) */
+.band-good   { color: var(--color-band-good); }
+.band-ok     { color: var(--color-band-ok); }
+.band-bad    { color: var(--color-band-bad); }
+.band-neutral{ color: var(--color-band-neutral); }
+.bandbg-good   { background: var(--color-band-good-bg);   color: var(--color-band-good); }
+.bandbg-ok     { background: var(--color-band-ok-bg);     color: var(--color-band-ok); }
+.bandbg-bad    { background: var(--color-band-bad-bg);    color: var(--color-band-bad); }
+.bandbg-neutral{ background: var(--color-band-neutral-bg);color: var(--color-band-neutral); }
+
+/* Left accent bar for metric cards, coloured by band */
+.band-bar-good   { box-shadow: inset 3px 0 0 0 var(--color-band-good); }
+.band-bar-ok     { box-shadow: inset 3px 0 0 0 var(--color-band-ok); }
+.band-bar-bad    { box-shadow: inset 3px 0 0 0 var(--color-band-bad); }
+.band-bar-neutral{ box-shadow: inset 3px 0 0 0 var(--color-border-strong); }
+
+/* ─── Animations ─── */
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes count-up {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up var(--duration-slow) var(--ease-out-expo) both;
+}
+
+/* Stagger children */
+.stagger > * {
+  animation: fade-in-up var(--duration-slow) var(--ease-out-expo) both;
+}
+.stagger > *:nth-child(1) { animation-delay: 0ms; }
+.stagger > *:nth-child(2) { animation-delay: 60ms; }
+.stagger > *:nth-child(3) { animation-delay: 120ms; }
+.stagger > *:nth-child(4) { animation-delay: 180ms; }
+.stagger > *:nth-child(5) { animation-delay: 240ms; }
+.stagger > *:nth-child(6) { animation-delay: 300ms; }

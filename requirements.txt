@@ -1,0 +1,13 @@
+# Botamin BI — Python pipeline dependencies
+# Core (always required)
+pandas==3.0.3
+numpy==2.4.6
+openpyxl==3.1.5
+httpx==0.28.1
+python-dotenv==1.0.1
+
+# LLM layer (optional — pipeline degrades to deterministic failsafe if absent)
+# Primary provider: Z.ai (GLM) via OpenAI-compatible SDK
+openai==1.59.6
+# Fallback provider: Anthropic Claude
+anthropic==0.42.0

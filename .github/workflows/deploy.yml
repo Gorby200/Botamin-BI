@@ -1,0 +1,107 @@
+name: Build and Deploy
+
+on:
+  # Push to main branch
+  push:
+    branches: [main]
+    paths:
+      - "frontend/**"
+      - "pipeline/**"
+      - ".github/workflows/**"
+      - "requirements.txt"
+      - "data/raw.csv"
+
+  # Manual trigger with parameters
+  workflow_dispatch:
+    inputs:
+      sheet_url:
+        description: "Google Sheets URL (required if no CSV in repo)"
+        required: false
+      llm_scope:
+        description: "LLM scope (off/focus/full/sample)"
+        required: false
+        default: "focus"
+        type: choice
+        options:
+          - off
+          - focus
+          - full
+          - sample
+
+# Prevent concurrent deployments
+concurrency:
+  group: deploy
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "20"
+  PYTHON_VERSION: "3.13"
+
+jobs:
+  build-and-deploy:
+    name: Build & Deploy to GitHub Pages
+    runs-on: ubuntu-latest
+
+    # Grant GITHUB_TOKEN the permissions required for deployment
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+
+      - name: 📦 Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: 🔧 Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: 📊 Run data pipeline
+        run: |
+          SHEET_URL="${{ github.event.inputs.sheet_url }}"
+          LLM_SCOPE="${{ github.event.inputs.llm_scope || 'focus' }}"
+
+          echo "Running pipeline with LLM scope: $LLM_SCOPE"
+
+          # Use Google Sheets if provided, otherwise use local CSV
+          if [ -n "$SHEET_URL" ]; then
+            python -m pipeline --sheet "$SHEET_URL" --llm-scope "$LLM_SCOPE"
+          elif [ -f "data/raw.csv" ]; then
+            python -m pipeline --file data/raw.csv --llm-scope "$LLM_SCOPE"
+          else
+            echo "⚠️ No data source found!"
+            echo "Either add data/raw.csv to the repository or provide sheet_url in workflow parameters."
+            exit 1
+          fi
+
+      - name: 🔨 Build React frontend
+        run: |
+          cd frontend
+          npm ci --legacy-peer-deps
+          npm run build
+
+      - name: 📁 Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: 📤 Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: frontend/dist
+
+      - name: 🚀 Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

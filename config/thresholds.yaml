@@ -1,0 +1,93 @@
+# Botamin BI Threshold Configuration
+# Version: 1.0
+# Last optimized: null
+
+version: 1
+last_optimized: null
+optimization_frequency: weekly
+
+# Classification thresholds
+# These control how sensitive the dialogue classifier is
+classification:
+  min_client_turns:
+    value: 3
+    min: 2
+    max: 5
+    llm_suggested: 3
+    rationale: "Balances noise reduction vs catching short but substantive conversations"
+    description: "Minimum number of client turns to qualify as a real conversation"
+
+  substantive_word_count:
+    value: 2
+    min: 1
+    max: 4
+    llm_suggested: 2
+    rationale: "Filters out ASR noise and reflexive responses like 'what?'"
+    description: "Minimum word count for a turn to be considered substantive"
+
+  repair_failure_threshold:
+    value: 2
+    min: 1
+    max: 4
+    llm_suggested: 2
+    rationale: "Two 'repeat' requests = probable ASR breakdown"
+    description: "Number of repair markers before flagging ASR failure"
+
+  long_monologue_words:
+    value: 60
+    min: 40
+    max: 100
+    llm_suggested: 60
+    rationale: "60+ words in one turn = likely monologue, negative signal"
+    description: "Word count threshold for detecting long bot monologues"
+
+# Quality scoring thresholds
+quality:
+  warning_threshold:
+    value: 0.4
+    min: 0.2
+    max: 0.6
+    llm_suggested: 0.4
+    rationale: "Calls below 0.4 quality need review"
+    description: "Quality score threshold for warning flag"
+
+  good_threshold:
+    value: 0.7
+    min: 0.5
+    max: 0.9
+    llm_suggested: 0.7
+    rationale: "Calls above 0.7 are 'good' quality benchmarks"
+    description: "Quality score threshold for 'good' flag"
+
+# Batch processing configuration
+batch_size:
+  value: 50
+  min: 20
+  max: 100
+  llm_suggested: 50
+  rationale: "Balances token efficiency with processing latency"
+  description: "Number of calls to process in single Tier 1 batch"
+
+# Tier 2 flagging conditions
+tier2_triggers:
+  celebrate_stage:
+    value: 3
+    description: "Flag calls that reached this stage for celebration analysis"
+
+  stage_with_objections:
+    value: 2
+    description: "Flag calls at this stage with objections for why-no-close analysis"
+
+  negative_patterns:
+    - PSY-094  # Objection ignored
+    - PSY-011  # Pitch in opener
+    - PSY-201  # Deaf to connectivity
+    description: "Flag calls with these negative bot patterns"
+
+  quality_below:
+    value: 0.3
+    description: "Flag calls below this quality score for review"
+
+  random_sample_rate:
+    value: 0.05
+    description: "Random sample rate of S0-S1 calls for quality control"
