@@ -296,13 +296,13 @@ class BatchAnalyzer:
                 error=str(e)
             ) for c in calls]
 
-    async def analyze_all(self, calls: list[dict], model: str = "", concurrency: int = 6) -> dict[str, BatchResult]:
-        """Analyze all calls in batches with concurrent processing.
+    async def analyze_all(self, calls: list[dict], model: str = "", concurrency: int = 2) -> dict[str, BatchResult]:
+        """Analyze all calls in batches with rate-limit-friendly concurrent processing.
 
         Args:
             calls: List of all calls to process
             model: Optional model override
-            concurrency: Number of batches to process concurrently
+            concurrency: Number of batches to process concurrently (default=2 for rate limits)
 
         Returns:
             Dict mapping call_id -> BatchResult
@@ -317,11 +317,14 @@ class BatchAnalyzer:
                     len(calls), len(batches), self.batch_size, concurrency)
 
         # Process batches concurrently with semaphore
-        from asyncio import Semaphore
+        from asyncio import Semaphore, sleep
 
         sem = Semaphore(concurrency)
+        batch_delay = 1.0  # Delay between starting batches to avoid burst
 
         async def process_batch(idx: int, batch: list[dict]) -> list[BatchResult]:
+            # Stagger batch starts to avoid hitting rate limits
+            await sleep(idx * batch_delay / concurrency)
             async with sem:
                 logger.info("Processing batch %d/%d (%d calls)", idx+1, len(batches), len(batch))
                 return await self.analyze_batch(batch, model)
@@ -338,9 +341,9 @@ class BatchAnalyzer:
             for r in batch_results:
                 all_results[r.call_id] = r
 
-        logger.info("Batch analysis complete: %d/%d successful",
-                    sum(1 for r in all_results.values() if r.success),
-                    len(all_results))
+        successful = sum(1 for r in all_results.values() if r.success)
+        logger.info("Batch analysis complete: %d/%d successful (%.1f%%)",
+                    successful, len(all_results), 100 * successful / len(all_results) if all_results else 0)
 
         return all_results
 

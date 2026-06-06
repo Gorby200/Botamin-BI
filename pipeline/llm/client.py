@@ -147,10 +147,20 @@ class LLMClient:
                 # bad_request won't be fixed by retry or by Anthropic with same payload
                 if resp.error_category == "bad_request":
                     return resp
-                # auth / rate_limit -> go straight to fallback
-                if resp.error_category in ("auth", "rate_limit"):
+                # auth -> go straight to fallback (can't fix with retry)
+                if resp.error_category == "auth":
                     break
-                if attempt < settings.LLM_RETRY_COUNT:
+                # rate_limit -> retry with exponential backoff
+                if resp.error_category == "rate_limit":
+                    if attempt < settings.LLM_RETRY_COUNT:
+                        backoff = min(settings.LLM_RETRY_DELAY_SEC * (2 ** (attempt - 1)), 30)
+                        logger.info("Rate limit hit, retrying in %.1fs...", backoff)
+                        await asyncio.sleep(backoff)
+                        continue
+                    else:
+                        logger.warning("Rate limit persisted after %d retries, falling back", attempt)
+                # other errors -> standard retry delay
+                if attempt < settings.LLM_RETRY_COUNT and resp.error_category != "rate_limit":
                     await asyncio.sleep(settings.LLM_RETRY_DELAY_SEC)
 
         # ── Fallback: Anthropic ─────────────────────────────────────────────
