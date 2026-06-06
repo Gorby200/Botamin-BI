@@ -134,8 +134,16 @@ class BatchAnalyzer:
     def pack_calls(self, calls: list[dict]) -> str:
         """Pack calls into minimal JSON format.
 
+        We send FULL dialogues because:
+        1. Bot patterns need full context (PSY-* detection)
+        2. Objection handling requires seeing full exchange
+        3. Stage evidence needs complete conversation flow
+
+        The optimization happens BEFORE this point: we only select substantive calls
+        (3+ client turns) via _select_for_llm, not by truncating content here.
+
         Input: [{"id": "c_01048", "turns": [{"role": "bot", "text": "..."}]}, ...]
-        Output: JSON string with short keys
+        Output: JSON string with short keys (minimal token overhead)
         """
         packed_calls = []
         for call in calls:

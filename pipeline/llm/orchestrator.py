@@ -214,7 +214,7 @@ def _prepare_temporal_data(calls: list[dict]) -> dict:
             "avg_duration": data["total_duration"] / data["count"] if data["count"] else 0,
             "avg_quality": data["quality_sum"] / data["count"] if data["count"] else 0
         }
-        for h, data in by_hour.items()
+    for h, data in by_hour.items()
     }
 
 
@@ -263,16 +263,29 @@ def integrate_with_pipeline(
 
     llm_status["available"] = True
 
-    # Prepare calls for analysis
+    # FILTER: Select only relevant calls for LLM analysis
+    # This is the KEY optimization - we don't send all 11k calls!
+    selected_indices = _select_for_llm(features, llm_scope)
+
+    if not selected_indices:
+        logger.info("No calls selected for LLM analysis under scope '%s'", llm_scope)
+        llm_status["note"] = f"No calls matched scope '{llm_scope}' criteria"
+        return features, llm_status
+
+    logger.info("LLM scope '%s': %d/%d calls selected for analysis",
+                llm_scope, len(selected_indices), len(features))
+
+    # Prepare ONLY selected calls for analysis
     calls = [
         {
             "id": f"c_{i:05d}",
-            "turns": f["turns"],
-            "duration_sec": f.get("duration_sec", 0),
-            "datetime": f.get("datetime", ""),
-            "outcome": f.get("analysis", {}).get("outcome", "")
+            "turns": features[i]["turns"],
+            "duration_sec": features[i].get("duration_sec", 0),
+            "datetime": features[i].get("datetime", ""),
+            "outcome": features[i].get("analysis", {}).get("outcome", ""),
+            "index": i  # Track original index for merging back
         }
-        for i, f in enumerate(features)
+    for i in selected_indices
     ]
 
     # Run three-tier analysis
@@ -287,11 +300,12 @@ def integrate_with_pipeline(
         llm_status["tier2_analyzed"] = len(results.get("tier2", {}))
         llm_status["tier3_run"] = bool(results.get("tier3"))
 
-        # Merge results back into features
-        for i, feature in enumerate(features):
-            call_id = f"c_{i:05d}"
+        # Merge results back into features (using original index)
+        for call in calls:
+            call_id = call["id"]
+            original_idx = call["index"]
             if call_id in results.get("merged", {}):
-                feature["analysis"] = results["merged"][call_id]
+                features[original_idx]["analysis"] = results["merged"][call_id]
 
         llm_status["tier3_results"] = results.get("tier3")
 
@@ -301,3 +315,38 @@ def integrate_with_pipeline(
         llm_status["mode"] = "deterministic"
 
     return features, llm_status
+
+
+def _select_for_llm(features: list[dict], scope: str) -> list[int]:
+    """Filter and return indices of calls that should be analyzed by LLM.
+
+    This is the CRITICAL filtering logic that prevents sending 11k calls!
+    - focus: only substantive dialogues (3+ client turns)
+    - full: all connected calls
+    - sample: random sample for testing
+    - off: none
+
+    Returns:
+        List of indices into features array
+    """
+    idxs = []
+
+    if scope == "off":
+        return idxs
+
+    # Get connected calls only (no point analyzing failed calls)
+    connected = [i for i, f in enumerate(features)
+                if f.get("analysis", {}).get("connected", False)]
+
+    if scope == "full":
+        return connected
+
+    if scope == "sample":
+        # Deterministic sample: every k-th call
+        k = max(1, len(connected) // max(settings.LLM_SAMPLE_SIZE, 1))
+        return connected[::k][:settings.LLM_SAMPLE_SIZE]
+
+    # focus (default): substantive dialogues only
+    min_turns = settings.MIN_CLIENT_TURNS
+    return [i for i in connected
+            if features[i].get("client_turns", 0) >= min_turns]
