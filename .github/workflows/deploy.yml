@@ -80,13 +80,20 @@ jobs:
           cache: "npm"
           cache-dependency-path: frontend/package-lock.json
 
+      # The pipeline (which calls the LLM) runs ONLY on a MANUAL trigger.
+      # A normal push just builds + deploys the data already committed in
+      # frontend/public/data — so CI never touches the LLM and can't fail on rate limits.
+      # Recommended flow: generate the dataset locally, commit it, push → static deploy.
       - name: 📊 Run data pipeline
+        if: github.event_name == 'workflow_dispatch'
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           ZHIPU_API_KEY: ${{ secrets.ZHIPU_API_KEY }}
           ZHIPU_BASE_URL: ${{ vars.ZHIPU_BASE_URL }}
           LLM_PRIMARY_MODEL: ${{ vars.LLM_PRIMARY_MODEL }}
           LLM_FALLBACK_MODEL: ${{ vars.LLM_FALLBACK_MODEL }}
+          # Low concurrency on CI to respect provider rate limits (no .env there).
+          LLM_CONCURRENCY: ${{ vars.LLM_CONCURRENCY || '2' }}
           MIN_CLIENT_TURNS: ${{ github.event.inputs.min_client_turns || '3' }}
           LLM_SAMPLE_SIZE: ${{ github.event.inputs.llm_sample_size || '1000' }}
         run: |

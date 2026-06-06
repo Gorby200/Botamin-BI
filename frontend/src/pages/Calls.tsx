@@ -4,7 +4,7 @@ import Badge from "../components/Badge";
 import Skeleton from "../components/Skeleton";
 import { Search, X, Volume2, User, Bot, ChevronLeft, ChevronRight, Sparkles, ShieldHalf,
          ThumbsUp, ThumbsDown, Lightbulb, Quote, Wrench, Target, Award } from "lucide-react";
-import { stageLabels, pct } from "../format";
+import { stageLabels, pct, outcomeLabels, objectionLabels, custdevCategoryLabels, asrSeverityLabels } from "../format";
 import type { QualityScore } from "../types";
 
 const PAGE_SIZE = 50;  // Match pipeline batch size for consistency
@@ -83,13 +83,13 @@ export default function CallsPage() {
                     {stageLabels[c.furthest_stage] ?? c.furthest_stage}
                   </span>
                 </td>
-                <td className="py-2 px-4 text-xs text-[var(--color-ink-secondary)]">{c.outcome}</td>
+                <td className="py-2 px-4 text-xs text-[var(--color-ink-secondary)]">{outcomeLabels[c.outcome] || c.outcome}</td>
                 <td className="py-2 px-4 text-xs">
                   {c.loss_layer === "context" ? <span className="band-ok">контекст</span>
                     : c.loss_layer === "controllable" ? <span className="band-bad">промпт</span>
                     : <span className="text-[var(--color-ink-muted)]">—</span>}
                 </td>
-                <td className="py-2 px-4 text-xs text-[var(--color-ink-tertiary)]">{c.asr_severity !== "none" ? c.asr_severity : ""}</td>
+                <td className="py-2 px-4 text-xs text-[var(--color-ink-tertiary)]">{asrSeverityLabels[c.asr_severity] ?? (c.asr_severity !== "none" ? c.asr_severity : "")}</td>
                 <td className="py-2 px-4 text-xs text-[var(--color-ink-tertiary)] max-w-[260px] truncate">{c.snippet}</td>
               </tr>
             ))}
@@ -219,7 +219,7 @@ function CallDrawer({ id, pageHint, onClose }: { id: string; pageHint?: string; 
                 <div className="space-y-1.5">
                   {data.objections.map((o, i) => (
                     <div key={i} className="text-xs">
-                      <Badge variant="warning">{o.type}</Badge>
+                      <Badge variant="warning">{objectionLabels[o.type] || o.type}</Badge>
                       {o.quote && <span className="ml-1.5 italic text-[var(--color-ink-tertiary)]">«{o.quote.slice(0, 80)}»</span>}
                       {o.root_cause && <p className="text-[10px] text-[var(--color-ink-muted)] mt-0.5">причина: {o.root_cause}</p>}
                     </div>
@@ -245,7 +245,7 @@ function CallDrawer({ id, pageHint, onClose }: { id: string; pageHint?: string; 
                     <div key={i} className="flex items-start gap-1.5 text-xs border-l-2 border-[var(--color-accent-subtle)] pl-2 py-0.5">
                       <Quote size={11} className="mt-0.5 shrink-0 text-[var(--color-ink-muted)]" />
                       <div className="min-w-0">
-                        <Badge>{it.category}</Badge>{" "}
+                        <Badge>{custdevCategoryLabels[it.category] || it.category}</Badge>{" "}
                         <span className="text-[var(--color-ink-secondary)]">{it.insight}</span>
                         {it.quote && <p className="italic text-[var(--color-ink-muted)] mt-0.5">«{it.quote.slice(0, 100)}»</p>}
                       </div>

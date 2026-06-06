@@ -74,7 +74,7 @@ class Settings:
     )
 
     # ─── Retry / fallback behaviour ────────────────────────────────────────
-    LLM_RETRY_COUNT: int = field(default_factory=lambda: _get_int("LLM_RETRY_COUNT", 2))
+    LLM_RETRY_COUNT: int = field(default_factory=lambda: _get_int("LLM_RETRY_COUNT", 4))
     LLM_RETRY_DELAY_SEC: float = field(
         default_factory=lambda: _get_float("LLM_RETRY_DELAY_SEC", 3.0)
     )
@@ -83,8 +83,10 @@ class Settings:
     )
 
     # ─── Batch behaviour (analysis-specific, not in the original client) ────
-    # How many calls to analyse concurrently. Keep modest to respect rate limits.
-    LLM_CONCURRENCY: int = field(default_factory=lambda: _get_int("LLM_CONCURRENCY", 6))
+    # How many requests to run concurrently. LOW by default (2) to respect strict
+    # provider rate limits — on CI there is no .env, so this code default is what runs.
+    # Bump it (e.g. 4–6) only if your provider tier allows a higher RPM.
+    LLM_CONCURRENCY: int = field(default_factory=lambda: _get_int("LLM_CONCURRENCY", 2))
     # Default scope when --llm-scope is not passed on the CLI.
     LLM_SCOPE: str = field(default_factory=lambda: _get("LLM_SCOPE", "focus"))
     # A dialogue needs at least this many CLIENT turns to qualify as "substantive"

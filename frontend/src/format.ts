@@ -73,3 +73,21 @@ export const stageLabels: Record<number, string> = {
   3: "Встреча",
   4: "Квалификация",
 };
+
+// Human RU labels for raw contract codes (so no English leaks into the UI).
+export const outcomeLabels: Record<string, string> = {
+  no_contact: "Нет контакта", contact_only: "Контакт", refused: "Отказ",
+  consent: "Согласие", offer_engaged: "Оффер донесён", meeting: "Встреча", qualified: "Квалификация",
+};
+export const objectionLabels: Record<string, string> = {
+  price: "Цена", no_need: "Не нужно", have_alternative: "Уже есть решение", no_time: "Нет времени",
+  no_budget: "Нет бюджета", send_info: "На почту", have_internal: "Делаем сами",
+  not_priority: "Не приоритет", gatekeeper: "Секретарь / не ЛПР",
+};
+export const custdevCategoryLabels: Record<string, string> = {
+  pain: "Боль", wish: "Пожелание", competitor: "Конкурент", pricing: "Цена",
+  decision: "Решение / ЛПР", trust: "Доверие к ИИ", timing: "Тайминг", usecase: "Сегмент", other: "Прочее",
+};
+export const asrSeverityLabels: Record<string, string> = {
+  none: "", low: "низкий", medium: "средний", high: "высокий",
+};

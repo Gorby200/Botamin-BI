@@ -433,9 +433,13 @@ async def _analyze_chunk(client, sem, chunk: list[dict], model: str, depth: int)
         for cid, obj in matched.items():
             if _is_usable(obj):
                 results[cid] = _normalize(obj)
-    elif resp.error_category == "auth":
-        logger.error("LLM auth error — aborting batch analysis: %s", (resp.error or "")[:120])
-        return results  # no point retrying auth failures
+    elif resp.error_category in ("auth", "rate_limit"):
+        # Do NOT bisect on rate-limit/auth: splitting would MULTIPLY requests and make
+        # a 429 cascade worse. The client already retried with exponential backoff; if it
+        # still failed, give up on this chunk — those dialogues keep deterministic analysis.
+        logger.warning("LLM %s after retries — skipping chunk (no bisect): %s",
+                       resp.error_category, (resp.error or "")[:120])
+        return results
 
     leftover = [c for c in chunk if c["id"] not in results]
     if leftover and depth < _MAX_BISECT_DEPTH and len(leftover) < len(chunk) + 1:

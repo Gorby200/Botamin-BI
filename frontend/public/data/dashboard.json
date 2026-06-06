@@ -1,0 +1,1969 @@
+{
+  "meta": {
+    "source": "data\\raw.csv",
+    "generated_at": "2026-06-07T02:24:41",
+    "total_rows": 11486,
+    "period_from": "2026-05-25",
+    "period_to": "2026-05-29",
+    "llm": {
+      "configured": true,
+      "provider": "zhipu",
+      "scope": "sample",
+      "mode": "llm_single_pass",
+      "available": true,
+      "calls_selected": 200,
+      "calls_analyzed": 200,
+      "note": ""
+    },
+    "data_quality": [
+      "74 calls under 3 sec (likely non-conversations)",
+      "6173 duplicate phone numbers"
+    ]
+  },
+  "reach": {
+    "dials": 11486,
+    "engaged": 866,
+    "responded": 2922,
+    "metrics": [
+      {
+        "id": "connect_rate",
+        "name": "Дозвон — бот заговорил",
+        "value": 0.7326,
+        "thr_key": "connect_rate",
+        "comments": {
+          "good": "Дозвон в норме — узкое место не здесь.",
+          "ok": "Дозвон средний: часть базы недоступна. Контролируйте качество/свежесть базы.",
+          "bad": "Низкий дозвон — теряем контакты до разговора. Зона диалера/базы."
+        },
+        "fmt": "pct",
+        "band": "good",
+        "verdict": "Хорошо",
+        "comment": "Дозвон в норме — узкое место не здесь.",
+        "desc": "Доля номеров, где бот дозвонился и начал говорить (опенер прозвучал).",
+        "why": "Отделяет проблему дозвона от диалога. Низкий — вопрос к диалеру/базе, не к промпту.",
+        "thresholds": {
+          "good": 0.6,
+          "ok": 0.4,
+          "direction": "higher"
+        },
+        "numerator": 8415,
+        "denominator": 11486
+      },
+      {
+        "id": "response_rate",
+        "name": "Ответил живой человек",
+        "value": 0.2544,
+        "thr_key": "engage_rate",
+        "comments": {
+          "good": "Высокая доля поднявших трубку и ответивших.",
+          "ok": "Типичная для холода доля ответивших.",
+          "bad": "Мало кто отвечает — проверьте время дозвона, АОН, базу."
+        },
+        "fmt": "pct",
+        "band": "good",
+        "verdict": "Хорошо",
+        "comment": "Высокая доля поднявших трубку и ответивших.",
+        "desc": "Доля номеров, где клиент произнёс хоть что-то (включая рефлекторное «алло?/что?»).",
+        "why": "Это ещё НЕ разговор. Важно отделить «издал звук» от реального диалога ниже.",
+        "thresholds": {
+          "good": 0.2,
+          "ok": 0.1,
+          "direction": "higher"
+        },
+        "numerator": 2922,
+        "denominator": 11486
+      },
+      {
+        "id": "conversation_rate",
+        "name": "Состоялся разговор (cold→warm)",
+        "value": 0.0754,
+        "thr_key": "conversation_rate",
+        "comments": {
+          "good": "Высокая для холода доля реальных разговоров — база тёплая/отобранная.",
+          "ok": "Доля реальных разговоров в норме для холодного аутбаунда по отобранной базе.",
+          "bad": "Мало реальных разговоров: либо база холодная, либо опенер не цепляет за первые секунды."
+        },
+        "fmt": "pct",
+        "band": "ok",
+        "verdict": "Приемлемо",
+        "comment": "Доля реальных разговоров в норме для холодного аутбаунда по отобранной базе.",
+        "desc": "Доля набранных номеров, где клиент сказал хотя бы одну СОДЕРЖАТЕЛЬНУЮ реплику (не «алло/что/нет»).",
+        "why": "Истинная база воронки и главный cold→warm-показатель. Всё качество промпта меряется ОТ неё. Из 2922 ответивших 70% — лишь рефлекторный шум, а не диалог.",
+        "thresholds": {
+          "good": 0.12,
+          "ok": 0.06,
+          "direction": "higher"
+        },
+        "numerator": 866,
+        "denominator": 11486
+      }
+    ]
+  },
+  "nsm": {
+    "id": "QMR",
+    "name": "Qualified Meeting Rate",
+    "value": 0.0247,
+    "thr_key": "qmr",
+    "comments": {
+      "good": "Здоровая доля качественных встреч на состоявшийся разговор.",
+      "ok": "Поток качественных встреч есть, но ниже цели — ищите узкое звено в драйверах.",
+      "bad": "Мало квалифицированных встреч на разговор: смотрите, где рвётся воронка (драйверы)."
+    },
+    "fmt": "pct",
+    "band": "bad",
+    "verdict": "Требует внимания",
+    "comment": "Мало квалифицированных встреч на разговор: смотрите, где рвётся воронка (драйверы).",
+    "desc": "Доля согласившихся разговоров (S1), доведённых до встречи С пройденной квалификацией.",
+    "why": "Северная звезда проекта: считает только встречи с квалифицированным лидом — то, что реально кормит отдел продаж, а не «мусорные» встречи. Знаменатель S1 отделяет качество промпта от проблем дозвона.",
+    "thresholds": {
+      "good": 0.15,
+      "ok": 0.07,
+      "direction": "higher"
+    },
+    "numerator": 9,
+    "denominator": 365,
+    "variants": {
+      "qmr_net": {
+        "label": "QMR без дисквалифицированных",
+        "value": 0.0192,
+        "hint": "Исключает лидов, которых бот сам отсёк (база мала и т.п.)."
+      },
+      "meeting_rate": {
+        "label": "Meeting Rate (S3/S1)",
+        "value": 0.1096,
+        "hint": "Все встречи на согласившийся разговор, без требования квалификации."
+      },
+      "qmr_per_engaged": {
+        "label": "QMR на разговор (S4/S0)",
+        "value": 0.0104,
+        "hint": "Знаменатель — все состоявшиеся разговоры."
+      },
+      "qmr_per_dial": {
+        "label": "QMR на набор (S4/всё)",
+        "value": 0.0008,
+        "hint": "Знаменатель — все набранные номера. Сюда «подмешан» дозвон."
+      }
+    },
+    "counts": {
+      "engaged": 866,
+      "consent": 365,
+      "meeting": 40,
+      "qualified": 9,
+      "qualified_net": 7,
+      "disqualified": 32
+    }
+  },
+  "funnel": [
+    {
+      "stage": "S0",
+      "label": "Контакт",
+      "count": 866,
+      "conversion_from_prev": 1.0,
+      "share_of_engaged": 1.0,
+      "dropped_abs": 0,
+      "drop_attribution": {}
+    },
+    {
+      "stage": "S1",
+      "label": "Согласие",
+      "count": 365,
+      "conversion_from_prev": 0.4215,
+      "share_of_engaged": 0.4215,
+      "dropped_abs": 501,
+      "drop_attribution": {
+        "client_hangup": 299,
+        "bot_hangup": 170,
+        "technical": 20,
+        "context_loss": 93,
+        "controllable_loss": 408
+      }
+    },
+    {
+      "stage": "S2",
+      "label": "Оффер донесён",
+      "count": 192,
+      "conversion_from_prev": 0.526,
+      "share_of_engaged": 0.2217,
+      "dropped_abs": 173,
+      "drop_attribution": {
+        "client_hangup": 98,
+        "bot_hangup": 60,
+        "technical": 9,
+        "context_loss": 30,
+        "controllable_loss": 143
+      }
+    },
+    {
+      "stage": "S3",
+      "label": "Встреча",
+      "count": 40,
+      "conversion_from_prev": 0.2083,
+      "share_of_engaged": 0.0462,
+      "dropped_abs": 152,
+      "drop_attribution": {
+        "client_hangup": 51,
+        "bot_hangup": 82,
+        "technical": 15,
+        "context_loss": 48,
+        "controllable_loss": 104
+      }
+    },
+    {
+      "stage": "S4",
+      "label": "Квалификация",
+      "count": 9,
+      "conversion_from_prev": 0.225,
+      "share_of_engaged": 0.0104,
+      "dropped_abs": 31,
+      "drop_attribution": {
+        "client_hangup": 17,
+        "bot_hangup": 10,
+        "technical": 3,
+        "context_loss": 0,
+        "controllable_loss": 31
+      }
+    }
+  ],
+  "drivers": [
+    {
+      "id": "CR0_1",
+      "name": "S0→S1 · Согласие",
+      "value": 0.4215,
+      "thr_key": "consent_rate",
+      "comments": {
+        "good": "Сильное звено — не первый кандидат на правку.",
+        "ok": "Среднее звено: есть резерв, но не самое узкое место.",
+        "bad": "Слабое звено воронки — приоритет для гипотез и A/B."
+      },
+      "fmt": "pct",
+      "band": "ok",
+      "verdict": "Приемлемо",
+      "comment": "Среднее звено: есть резерв, но не самое узкое место.",
+      "desc": "Доля состоявшихся разговоров, где клиент дал согласие слушать.",
+      "why": "Меряет силу опенера: цепляет ли первая реплика и просьба о согласии.",
+      "thresholds": {
+        "good": 0.5,
+        "ok": 0.3,
+        "direction": "higher"
+      },
+      "numerator": 365,
+      "denominator": 866,
+      "prompt_block": "opener",
+      "volume_in": 866,
+      "volume_out": 365,
+      "mde_pp": 5.0,
+      "sample_needed": 1551
+    },
+    {
+      "id": "CR1_2",
+      "name": "S1→S2 · Оффер донесён",
+      "value": 0.526,
+      "thr_key": "offer_rate",
+      "comments": {
+        "good": "Сильное звено — не первый кандидат на правку.",
+        "ok": "Среднее звено: есть резерв, но не самое узкое место.",
+        "bad": "Слабое звено воронки — приоритет для гипотез и A/B."
+      },
+      "fmt": "pct",
+      "band": "ok",
+      "verdict": "Приемлемо",
+      "comment": "Среднее звено: есть резерв, но не самое узкое место.",
+      "desc": "Доля согласившихся, кто реально услышал и среагировал на оффер.",
+      "why": "Меряет качество подачи оффера: понятно ли, не занудно ли, есть ли диалог.",
+      "thresholds": {
+        "good": 0.55,
+        "ok": 0.35,
+        "direction": "higher"
+      },
+      "numerator": 192,
+      "denominator": 365,
+      "prompt_block": "offer",
+      "volume_in": 365,
+      "volume_out": 192,
+      "mde_pp": 5.0,
+      "sample_needed": 1552
+    },
+    {
+      "id": "CR2_3",
+      "name": "S2→S3 · Встреча",
+      "value": 0.2083,
+      "thr_key": "meeting_rate_drv",
+      "comments": {
+        "good": "Сильное звено — не первый кандидат на правку.",
+        "ok": "Среднее звено: есть резерв, но не самое узкое место.",
+        "bad": "Слабое звено воронки — приоритет для гипотез и A/B."
+      },
+      "fmt": "pct",
+      "band": "ok",
+      "verdict": "Приемлемо",
+      "comment": "Среднее звено: есть резерв, но не самое узкое место.",
+      "desc": "Доля услышавших оффер, кто СОГЛАСИЛСЯ на встречу (по словам клиента).",
+      "why": "Меряет силу закрытия: умеет ли бот предложить шаг и снять сопротивление.",
+      "thresholds": {
+        "good": 0.3,
+        "ok": 0.15,
+        "direction": "higher"
+      },
+      "numerator": 40,
+      "denominator": 192,
+      "prompt_block": "closing",
+      "volume_in": 192,
+      "volume_out": 40,
+      "mde_pp": 5.0,
+      "sample_needed": 1122
+    },
+    {
+      "id": "CR3_4",
+      "name": "S3→S4 · Квалификация",
+      "value": 0.225,
+      "thr_key": "qual_rate",
+      "comments": {
+        "good": "Сильное звено — не первый кандидат на правку.",
+        "ok": "Среднее звено: есть резерв, но не самое узкое место.",
+        "bad": "Слабое звено воронки — приоритет для гипотез и A/B."
+      },
+      "fmt": "pct",
+      "band": "bad",
+      "verdict": "Требует внимания",
+      "comment": "Слабое звено воронки — приоритет для гипотез и A/B.",
+      "desc": "Доля согласившихся на встречу, кто ответил на квалифицирующие вопросы.",
+      "why": "Меряет качество квалификации: вплетена ли в контекст, не «допрос» ли.",
+      "thresholds": {
+        "good": 0.5,
+        "ok": 0.3,
+        "direction": "higher"
+      },
+      "numerator": 9,
+      "denominator": 40,
+      "prompt_block": "qualification",
+      "volume_in": 40,
+      "volume_out": 9,
+      "mde_pp": 5.0,
+      "sample_needed": 1176
+    }
+  ],
+  "quality": {
+    "metrics": [
+      {
+        "id": "responsiveness",
+        "name": "Отзывчивость бота",
+        "value": 0.883,
+        "thr_key": "responsiveness",
+        "comments": {
+          "good": "Бот ведёт диалог, а не гонит скрипт.",
+          "ok": "Местами бот не реагирует на сказанное — проверьте обработку реплик.",
+          "bad": "Бот часто игнорирует/повторяет — диалог рвётся. Смотрите ASR и логику ответов."
+        },
+        "fmt": "ratio",
+        "band": "good",
+        "verdict": "Хорошо",
+        "comment": "Бот ведёт диалог, а не гонит скрипт.",
+        "desc": "Насколько реплики бота отвечают на последнюю реплику клиента (0–1).",
+        "why": "Прокси «слышит ли бот». Падает, когда бот повторяет вопрос из-за нераспознавания.",
+        "thresholds": {
+          "good": 0.8,
+          "ok": 0.6,
+          "direction": "higher"
+        },
+        "numerator": null,
+        "denominator": null
+      },
+      {
+        "id": "asr_breakdown_rate",
+        "name": "Обвал связи/ASR",
+        "value": 0.3083,
+        "thr_key": "asr_breakdown_rate",
+        "comments": {
+          "good": "Связь в основном чистая.",
+          "ok": "Заметная доля звонков со сбоями слышимости — эскалируйте телефонии.",
+          "bad": "Каждый 5-й+ разговор рушится из-за связи. Это убивает конверсию ДО промпта."
+        },
+        "fmt": "pct",
+        "band": "bad",
+        "verdict": "Требует внимания",
+        "comment": "Каждый 5-й+ разговор рушится из-за связи. Это убивает конверсию ДО промпта.",
+        "desc": "Доля разговоров с признаками проблем слышимости («не слышу», «алло», «что?»).",
+        "why": "Контекстная метрика №1. Высокая — промпт чинить бессмысленно, нужен телефон/ASR.",
+        "thresholds": {
+          "good": 0.1,
+          "ok": 0.2,
+          "direction": "lower"
+        },
+        "numerator": 267,
+        "denominator": 866
+      },
+      {
+        "id": "bot_talk_share",
+        "name": "Доля речи бота",
+        "value": 0.815,
+        "thr_key": "bot_talk_share",
+        "comments": {
+          "good": "Сбалансированный диалог — клиент успевает участвовать.",
+          "ok": "Бот говорит заметно больше клиента — разбейте оффер на ходы.",
+          "bad": "Бот доминирует в речи — это монолог-питч, а не диалог."
+        },
+        "fmt": "ratio",
+        "band": "bad",
+        "verdict": "Требует внимания",
+        "comment": "Бот доминирует в речи — это монолог-питч, а не диалог.",
+        "desc": "Доля слов, сказанных ботом, от всех слов в разговоре (talk-to-listen).",
+        "why": "Высокая доля = монолог, клиент не вовлечён. Здоровый диалог ближе к балансу.",
+        "thresholds": {
+          "good": 0.65,
+          "ok": 0.75,
+          "direction": "lower"
+        },
+        "numerator": null,
+        "denominator": null
+      },
+      {
+        "id": "repair_rate",
+        "name": "Доля разговоров с переспросами",
+        "value": 0.2818,
+        "thr_key": "repair_rate",
+        "comments": {
+          "good": "Переспросы редки.",
+          "ok": "Переспросы заметны — частично ASR, частично длинные реплики бота.",
+          "bad": "Частые переспросы — клиенты не понимают бота. Связь + длина реплик."
+        },
+        "fmt": "pct",
+        "band": "ok",
+        "verdict": "Приемлемо",
+        "comment": "Переспросы заметны — частично ASR, частично длинные реплики бота.",
+        "desc": "Доля разговоров, где клиент переспрашивал/не расслышал хотя бы раз.",
+        "why": "Прокси фрустрации от ASR. Коррелирует с ранним отвалом.",
+        "thresholds": {
+          "good": 0.15,
+          "ok": 0.3,
+          "direction": "lower"
+        },
+        "numerator": 244,
+        "denominator": 866
+      },
+      {
+        "id": "quality_score",
+        "name": "Качество ведения диалога",
+        "value": 0.443,
+        "thr_key": "quality_score",
+        "comments": {
+          "good": "Бот в среднем ведёт диалоги качественно.",
+          "ok": "Среднее качество — есть системные провисания (см. паттерны).",
+          "bad": "Низкое качество ведения — много негативных паттернов/обрывов."
+        },
+        "fmt": "ratio",
+        "band": "ok",
+        "verdict": "Приемлемо",
+        "comment": "Среднее качество — есть системные провисания (см. паттерны).",
+        "desc": "Композитная оценка качества диалога (продвижение + отзывчивость), 0–1.",
+        "why": "Опережающий индикатор: меняется раньше конверсии, помогает быстрее оценивать A/B.",
+        "thresholds": {
+          "good": 0.55,
+          "ok": 0.4,
+          "direction": "higher"
+        },
+        "numerator": null,
+        "denominator": null
+      }
+    ]
+  },
+  "guardrails": [
+    {
+      "id": "meeting_quality",
+      "name": "Полнота квалификации на встречах",
+      "value": 0.225,
+      "thr_key": "meeting_quality",
+      "comments": {
+        "good": "Встречи в основном квалифицированы.",
+        "ok": "Часть встреч без квалификации — риск мусорных встреч.",
+        "bad": "Много встреч без квалификации — встречи могут быть мусорными."
+      },
+      "fmt": "pct",
+      "band": "bad",
+      "verdict": "Требует внимания",
+      "comment": "Много встреч без квалификации — встречи могут быть мусорными.",
+      "desc": "Доля назначенных встреч, на которых пройдена квалификация.",
+      "why": "Контр-метрика к «гонке за встречами»: бот не должен набивать пустые встречи.",
+      "thresholds": {
+        "good": 0.6,
+        "ok": 0.4,
+        "direction": "higher"
+      },
+      "numerator": 9,
+      "denominator": 40
+    },
+    {
+      "id": "disqualified_share",
+      "name": "Доля дисквалификаций среди встреч",
+      "value": 0.8,
+      "thr_key": "disqualified_share",
+      "comments": {
+        "good": "Дисквалификаций мало.",
+        "ok": "Заметная дисквалификация — проверьте ICP/сегмент базы.",
+        "bad": "Много дисквалификаций — звоним не той базе (вопрос к таргетингу, не промпту)."
+      },
+      "fmt": "pct",
+      "band": "bad",
+      "verdict": "Требует внимания",
+      "comment": "Много дисквалификаций — звоним не той базе (вопрос к таргетингу, не промпту).",
+      "desc": "Доля встреч, где бот сам отсёк лида (база мала и т.п.).",
+      "why": "Показывает, не таргетируем ли не ту базу: высокий — проблема сегмента, не промпта.",
+      "thresholds": {
+        "good": 0.15,
+        "ok": 0.3,
+        "direction": "lower"
+      },
+      "numerator": 32,
+      "denominator": 40
+    },
+    {
+      "id": "complaint_rate",
+      "name": "Жалобы / «не звоните»",
+      "value": 0.0219,
+      "thr_key": "complaint_rate",
+      "comments": {
+        "good": "Негатив в пределах нормы.",
+        "ok": "Негатив подрос — следите при ужесточении промпта.",
+        "bad": "Высокий негатив — риск для бренда и блокировок номеров."
+      },
+      "fmt": "pct",
+      "band": "ok",
+      "verdict": "Приемлемо",
+      "comment": "Негатив подрос — следите при ужесточении промпта.",
+      "desc": "Доля разговоров с явным негативом/просьбой не звонить.",
+      "why": "Репутационный guardrail: рост при агрессивном промпте недопустим.",
+      "thresholds": {
+        "good": 0.02,
+        "ok": 0.05,
+        "direction": "lower"
+      },
+      "numerator": null,
+      "denominator": null
+    },
+    {
+      "id": "over_pressure",
+      "name": "Избыточное давление после отказа",
+      "value": 0.0173,
+      "thr_key": "over_pressure",
+      "comments": {
+        "good": "Бот корректно отступает после отказа.",
+        "ok": "Местами передавливает — точечно поправить.",
+        "bad": "Бот системно давит после отказа — источник жалоб."
+      },
+      "fmt": "pct",
+      "band": "good",
+      "verdict": "Хорошо",
+      "comment": "Бот корректно отступает после отказа.",
+      "desc": "Доля разговоров, где бот давит после явного отказа клиента.",
+      "why": "Guardrail при усилении закрытия: нельзя поднимать встречи ценой агрессии.",
+      "thresholds": {
+        "good": 0.05,
+        "ok": 0.1,
+        "direction": "lower"
+      },
+      "numerator": null,
+      "denominator": null
+    },
+    {
+      "id": "aht",
+      "name": "Средняя длительность разговора",
+      "value": 49.9,
+      "thr_key": "aht",
+      "comments": {
+        "good": "Длительность в здоровом коридоре.",
+        "ok": "Разговоры длинноваты — проверьте затянутость питча.",
+        "bad": "Очень длинные разговоры — дорого и обычно из-за ASR-петель/монологов."
+      },
+      "fmt": "sec",
+      "band": "good",
+      "verdict": "Хорошо",
+      "comment": "Длительность в здоровом коридоре.",
+      "desc": "Средняя длительность состоявшегося разговора, сек.",
+      "why": "Экономика: слишком длинные разговоры дороги; слишком короткие — не доносят оффер.",
+      "thresholds": {
+        "good": 180,
+        "ok": 300,
+        "direction": "lower"
+      },
+      "numerator": null,
+      "denominator": null
+    }
+  ],
+  "loss_attribution": {
+    "context": 171,
+    "controllable": 686,
+    "total_lost": 857,
+    "context_share": 0.1995,
+    "controllable_share": 0.8005,
+    "by_reason": [
+      {
+        "reason": "opener_no_consent",
+        "label": "Вступил в разговор, но не дал согласия",
+        "count": 269
+      },
+      {
+        "reason": "asr_breakdown",
+        "label": "Обвал связи / ASR",
+        "count": 107
+      },
+      {
+        "reason": "pitch_no_traction",
+        "label": "Согласие есть, питч не зацепил",
+        "count": 106
+      },
+      {
+        "reason": "no_close",
+        "label": "Оффер донесён, но нет закрытия",
+        "count": 102
+      },
+      {
+        "reason": "objection_unhandled",
+        "label": "Возражение не отработано",
+        "count": 86
+      },
+      {
+        "reason": "refused",
+        "label": "Явный отказ",
+        "count": 69
+      },
+      {
+        "reason": "other",
+        "label": "Прочее",
+        "count": 27
+      },
+      {
+        "reason": "instant_hangup",
+        "label": "Бросил на приветствии (молча)",
+        "count": 24
+      },
+      {
+        "reason": "no_qualification",
+        "label": "Встреча без квалификации",
+        "count": 24
+      },
+      {
+        "reason": "disqualified",
+        "label": "Бот дисквалифицировал лида",
+        "count": 17
+      },
+      {
+        "reason": "weak_opener",
+        "label": "weak_opener",
+        "count": 14
+      },
+      {
+        "reason": "reached_goal",
+        "label": "Цель достигнута",
+        "count": 5
+      },
+      {
+        "reason": "no_answer",
+        "label": "Не дозвонились",
+        "count": 2
+      },
+      {
+        "reason": "technical",
+        "label": "technical",
+        "count": 2
+      },
+      {
+        "reason": "no_time",
+        "label": "no_time",
+        "count": 1
+      },
+      {
+        "reason": "boring_pitch",
+        "label": "boring_pitch",
+        "count": 1
+      },
+      {
+        "reason": "no_contact",
+        "label": "no_contact",
+        "count": 1
+      }
+    ]
+  },
+  "bottleneck": {
+    "driver_id": "CR0_1",
+    "label": "S0→S1 · Согласие",
+    "stage_from": "S0",
+    "stage_to": "S1",
+    "conversion": 0.4215,
+    "dropped_abs": 501,
+    "prompt_block": "opener",
+    "rationale": "Узкое место по абсолютному числу потерянных клиентов. Приоритет правок (с учётом усилия и прохождения вниз по воронке) — в Бэклоге."
+  },
+  "gap_analysis": {
+    "n": 866,
+    "avg_quality": 4.43,
+    "avg_outcome": 2.17,
+    "avg_gap": 2.26,
+    "grade_distribution": [
+      {
+        "grade": "A",
+        "count": 31
+      },
+      {
+        "grade": "B",
+        "count": 130
+      },
+      {
+        "grade": "C",
+        "count": 147
+      },
+      {
+        "grade": "D",
+        "count": 426
+      },
+      {
+        "grade": "F",
+        "count": 132
+      }
+    ],
+    "buckets": {
+      "closing_bottleneck": 669,
+      "warm_base": 7,
+      "aligned": 190
+    },
+    "interpretation": "Качество ведения в среднем ВЫШЕ результата: бот хорошо ведёт, но не доводит до встречи — узкое место в закрытии или нерелевантная база."
+  },
+  "outcomes": [
+    {
+      "outcome": "Полная квалификация",
+      "key": "qualified",
+      "count": 9,
+      "score": 5
+    },
+    {
+      "outcome": "Назначена встреча",
+      "key": "meeting",
+      "count": 31,
+      "score": 4
+    },
+    {
+      "outcome": "Оффер донесён",
+      "key": "offer_engaged",
+      "count": 150,
+      "score": 3
+    },
+    {
+      "outcome": "Получено согласие",
+      "key": "consent",
+      "count": 151,
+      "score": 2
+    },
+    {
+      "outcome": "Только контакт",
+      "key": "contact_only",
+      "count": 353,
+      "score": 1
+    },
+    {
+      "outcome": "Отказ",
+      "key": "refused",
+      "count": 153,
+      "score": 1
+    },
+    {
+      "outcome": "Нет контакта",
+      "key": "no_contact",
+      "count": 10638,
+      "score": 0
+    }
+  ],
+  "time_heatmap": [
+    {
+      "dow": 0,
+      "hour": 11,
+      "calls": 6,
+      "advanced": 0
+    },
+    {
+      "dow": 0,
+      "hour": 12,
+      "calls": 1,
+      "advanced": 0
+    },
+    {
+      "dow": 1,
+      "hour": 9,
+      "calls": 1,
+      "advanced": 0
+    },
+    {
+      "dow": 3,
+      "hour": 13,
+      "calls": 196,
+      "advanced": 3
+    },
+    {
+      "dow": 3,
+      "hour": 14,
+      "calls": 118,
+      "advanced": 7
+    },
+    {
+      "dow": 3,
+      "hour": 15,
+      "calls": 26,
+      "advanced": 1
+    },
+    {
+      "dow": 3,
+      "hour": 16,
+      "calls": 31,
+      "advanced": 1
+    },
+    {
+      "dow": 3,
+      "hour": 17,
+      "calls": 78,
+      "advanced": 7
+    },
+    {
+      "dow": 3,
+      "hour": 18,
+      "calls": 99,
+      "advanced": 9
+    },
+    {
+      "dow": 3,
+      "hour": 19,
+      "calls": 33,
+      "advanced": 0
+    },
+    {
+      "dow": 4,
+      "hour": 9,
+      "calls": 5,
+      "advanced": 1
+    },
+    {
+      "dow": 4,
+      "hour": 10,
+      "calls": 2,
+      "advanced": 1
+    },
+    {
+      "dow": 4,
+      "hour": 11,
+      "calls": 112,
+      "advanced": 4
+    },
+    {
+      "dow": 4,
+      "hour": 12,
+      "calls": 47,
+      "advanced": 2
+    },
+    {
+      "dow": 4,
+      "hour": 13,
+      "calls": 45,
+      "advanced": 3
+    },
+    {
+      "dow": 4,
+      "hour": 14,
+      "calls": 9,
+      "advanced": 0
+    },
+    {
+      "dow": 4,
+      "hour": 15,
+      "calls": 9,
+      "advanced": 1
+    },
+    {
+      "dow": 4,
+      "hour": 16,
+      "calls": 19,
+      "advanced": 0
+    },
+    {
+      "dow": 4,
+      "hour": 17,
+      "calls": 29,
+      "advanced": 0
+    }
+  ],
+  "duration_distribution": [
+    {
+      "bucket_sec": "0-10",
+      "count": 33
+    },
+    {
+      "bucket_sec": "10-30",
+      "count": 383
+    },
+    {
+      "bucket_sec": "30-60",
+      "count": 258
+    },
+    {
+      "bucket_sec": "60-120",
+      "count": 154
+    },
+    {
+      "bucket_sec": "120-300",
+      "count": 25
+    },
+    {
+      "bucket_sec": "300-600",
+      "count": 0
+    },
+    {
+      "bucket_sec": "600+",
+      "count": 13
+    }
+  ],
+  "thresholds_defaults": [
+    {
+      "key": "connect_rate",
+      "label": "Дозвон — бот заговорил",
+      "fmt": "pct",
+      "group": "Reach",
+      "good": 0.6,
+      "ok": 0.4,
+      "direction": "higher"
+    },
+    {
+      "key": "engage_rate",
+      "label": "Ответил живой человек",
+      "fmt": "pct",
+      "group": "Reach",
+      "good": 0.2,
+      "ok": 0.1,
+      "direction": "higher"
+    },
+    {
+      "key": "conversation_rate",
+      "label": "Состоялся разговор (cold→warm)",
+      "fmt": "pct",
+      "group": "Reach",
+      "good": 0.12,
+      "ok": 0.06,
+      "direction": "higher"
+    },
+    {
+      "key": "early_drop_rate",
+      "label": "Отвал на приветствии",
+      "fmt": "pct",
+      "group": "Reach",
+      "good": 0.3,
+      "ok": 0.5,
+      "direction": "lower"
+    },
+    {
+      "key": "consent_rate",
+      "label": "S0→S1 · Согласие",
+      "fmt": "pct",
+      "group": "Воронка",
+      "good": 0.5,
+      "ok": 0.3,
+      "direction": "higher"
+    },
+    {
+      "key": "offer_rate",
+      "label": "S1→S2 · Оффер донесён",
+      "fmt": "pct",
+      "group": "Воронка",
+      "good": 0.55,
+      "ok": 0.35,
+      "direction": "higher"
+    },
+    {
+      "key": "meeting_rate_drv",
+      "label": "S2→S3 · Встреча",
+      "fmt": "pct",
+      "group": "Воронка",
+      "good": 0.3,
+      "ok": 0.15,
+      "direction": "higher"
+    },
+    {
+      "key": "qual_rate",
+      "label": "S3→S4 · Квалификация",
+      "fmt": "pct",
+      "group": "Воронка",
+      "good": 0.5,
+      "ok": 0.3,
+      "direction": "higher"
+    },
+    {
+      "key": "qmr",
+      "label": "QMR · Северная звезда",
+      "fmt": "pct",
+      "group": "Цель",
+      "good": 0.15,
+      "ok": 0.07,
+      "direction": "higher"
+    },
+    {
+      "key": "meeting_rate",
+      "label": "Meeting Rate (S3/S1)",
+      "fmt": "pct",
+      "group": "Цель",
+      "good": 0.2,
+      "ok": 0.1,
+      "direction": "higher"
+    },
+    {
+      "key": "responsiveness",
+      "label": "Отзывчивость бота",
+      "fmt": "ratio",
+      "group": "Качество",
+      "good": 0.8,
+      "ok": 0.6,
+      "direction": "higher"
+    },
+    {
+      "key": "asr_breakdown_rate",
+      "label": "Обвал связи / ASR",
+      "fmt": "pct",
+      "group": "Качество",
+      "good": 0.1,
+      "ok": 0.2,
+      "direction": "lower"
+    },
+    {
+      "key": "bot_talk_share",
+      "label": "Доля речи бота",
+      "fmt": "ratio",
+      "group": "Качество",
+      "good": 0.65,
+      "ok": 0.75,
+      "direction": "lower"
+    },
+    {
+      "key": "repair_rate",
+      "label": "Доля переспросов",
+      "fmt": "pct",
+      "group": "Качество",
+      "good": 0.15,
+      "ok": 0.3,
+      "direction": "lower"
+    },
+    {
+      "key": "quality_score",
+      "label": "Качество ведения диалога",
+      "fmt": "ratio",
+      "group": "Качество",
+      "good": 0.55,
+      "ok": 0.4,
+      "direction": "higher"
+    },
+    {
+      "key": "meeting_quality",
+      "label": "Полнота квалификации на встречах",
+      "fmt": "pct",
+      "group": "Guardrails",
+      "good": 0.6,
+      "ok": 0.4,
+      "direction": "higher"
+    },
+    {
+      "key": "disqualified_share",
+      "label": "Доля дисквалификаций",
+      "fmt": "pct",
+      "group": "Guardrails",
+      "good": 0.15,
+      "ok": 0.3,
+      "direction": "lower"
+    },
+    {
+      "key": "complaint_rate",
+      "label": "Жалобы / «не звоните»",
+      "fmt": "pct",
+      "group": "Guardrails",
+      "good": 0.02,
+      "ok": 0.05,
+      "direction": "lower"
+    },
+    {
+      "key": "over_pressure",
+      "label": "Избыточное давление после отказа",
+      "fmt": "pct",
+      "group": "Guardrails",
+      "good": 0.05,
+      "ok": 0.1,
+      "direction": "lower"
+    },
+    {
+      "key": "aht",
+      "label": "Средняя длительность разговора",
+      "fmt": "sec",
+      "group": "Guardrails",
+      "good": 180,
+      "ok": 300,
+      "direction": "lower"
+    }
+  ],
+  "diagnostics": {
+    "pattern_audit": [
+      {
+        "psy_id": "PSY-010",
+        "name": "Запрос разрешения в опенере",
+        "polarity": "positive",
+        "impact": "high",
+        "prompt_block": "opener",
+        "category": "Раппорт",
+        "weight": 2,
+        "share": 0.8822,
+        "count": 764,
+        "lift_on_advance": 0.0049
+      },
+      {
+        "psy_id": "PSY-106",
+        "name": "Нет попытки закрытия / нет CTA",
+        "polarity": "negative",
+        "impact": "critical",
+        "prompt_block": "closing",
+        "category": "Закрытие",
+        "weight": 3,
+        "share": 0.5554,
+        "count": 481,
+        "lift_on_advance": -0.0462
+      },
+      {
+        "psy_id": "PSY-047",
+        "name": "Альтернативный вопрос (выбор из двух «да»)",
+        "polarity": "positive",
+        "impact": "critical",
+        "prompt_block": "closing",
+        "category": "Вопросы",
+        "weight": 3,
+        "share": 0.157,
+        "count": 136,
+        "lift_on_advance": 0.1818
+      },
+      {
+        "psy_id": "PSY-011",
+        "name": "Питч в лоб в опенере (без согласия)",
+        "polarity": "negative",
+        "impact": "critical",
+        "prompt_block": "opener",
+        "category": "Раппорт",
+        "weight": 3,
+        "share": 0.1282,
+        "count": 111,
+        "lift_on_advance": -0.0372
+      },
+      {
+        "psy_id": "PSY-201",
+        "name": "Глухота к проблеме связи («не слышу» — бот питчит)",
+        "polarity": "negative",
+        "impact": "critical",
+        "prompt_block": "context",
+        "category": "Голос/ASR",
+        "weight": 3,
+        "share": 0.0785,
+        "count": 68,
+        "lift_on_advance": -0.0315
+      },
+      {
+        "psy_id": "PSY-095",
+        "name": "Преждевременная сдача («пришлю на почту»)",
+        "polarity": "negative",
+        "impact": "critical",
+        "prompt_block": "closing",
+        "category": "Возражения",
+        "weight": 3,
+        "share": 0.06,
+        "count": 52,
+        "lift_on_advance": 0.05
+      },
+      {
+        "psy_id": "PSY-096",
+        "name": "Альтернативное закрытие («вторник или среда?»)",
+        "polarity": "positive",
+        "impact": "critical",
+        "prompt_block": "closing",
+        "category": "Закрытие",
+        "weight": 3,
+        "share": 0.0312,
+        "count": 27,
+        "lift_on_advance": 0.2131
+      },
+      {
+        "psy_id": "PSY-124",
+        "name": "Затянутый монолог-питч (>60 слов)",
+        "polarity": "negative",
+        "impact": "critical",
+        "prompt_block": "offer",
+        "category": "Темп",
+        "weight": 3,
+        "share": 0.03,
+        "count": 26,
+        "lift_on_advance": -0.0077
+      },
+      {
+        "psy_id": "PSY-060",
+        "name": "Эмпатия к возражению (валидация чувств)",
+        "polarity": "positive",
+        "impact": "high",
+        "prompt_block": "closing",
+        "category": "Эмоции",
+        "weight": 2,
+        "share": 0.0427,
+        "count": 37,
+        "lift_on_advance": -0.0192
+      },
+      {
+        "psy_id": "PSY-016",
+        "name": "Фрейм эксперта/консультанта",
+        "polarity": "positive",
+        "impact": "critical",
+        "prompt_block": "opener",
+        "category": "Фрейм",
+        "weight": 3,
+        "share": 0.0231,
+        "count": 20,
+        "lift_on_advance": 0.0038
+      },
+      {
+        "psy_id": "PSY-027",
+        "name": "Соц. доказательство (конкретное имя клиента)",
+        "polarity": "positive",
+        "impact": "critical",
+        "prompt_block": "offer",
+        "category": "Влияние",
+        "weight": 3,
+        "share": 0.0208,
+        "count": 18,
+        "lift_on_advance": -0.0462
+      },
+      {
+        "psy_id": "PSY-058",
+        "name": "Считывание раздражения (смена тактики)",
+        "polarity": "positive",
+        "impact": "critical",
+        "prompt_block": "context",
+        "category": "Эмоции",
+        "weight": 3,
+        "share": 0.0185,
+        "count": 16,
+        "lift_on_advance": -0.0462
+      },
+      {
+        "psy_id": "PSY-200",
+        "name": "ASR-петля (бот повторяет один вопрос)",
+        "polarity": "negative",
+        "impact": "high",
+        "prompt_block": "context",
+        "category": "Голос/ASR",
+        "weight": 2,
+        "share": 0.0185,
+        "count": 16,
+        "lift_on_advance": 0.0788
+      },
+      {
+        "psy_id": "PSY-094",
+        "name": "Игнорирование возражения",
+        "polarity": "negative",
+        "impact": "critical",
+        "prompt_block": "offer",
+        "category": "Возражения",
+        "weight": 3,
+        "share": 0.0104,
+        "count": 9,
+        "lift_on_advance": -0.0462
+      },
+      {
+        "psy_id": "PSY-116",
+        "name": "Сухое перечисление услуг без истории",
+        "polarity": "negative",
+        "impact": "high",
+        "prompt_block": "offer",
+        "category": "Сторителлинг",
+        "weight": 2,
+        "share": 0.015,
+        "count": 13,
+        "lift_on_advance": -0.0462
+      },
+      {
+        "psy_id": "PSY-042",
+        "name": "Открытый вопрос",
+        "polarity": "positive",
+        "impact": "high",
+        "prompt_block": "offer",
+        "category": "Вопросы",
+        "weight": 2,
+        "share": 0.0139,
+        "count": 12,
+        "lift_on_advance": 0.1205
+      },
+      {
+        "psy_id": "PSY-101",
+        "name": "Снятие давления («встреча ни к чему не обязывает»)",
+        "polarity": "positive",
+        "impact": "critical",
+        "prompt_block": "closing",
+        "category": "Закрытие",
+        "weight": 3,
+        "share": 0.0092,
+        "count": 8,
+        "lift_on_advance": 0.3288
+      },
+      {
+        "psy_id": "PSY-130",
+        "name": "Обход привратника через конкретику (имя ЛПР)",
+        "polarity": "positive",
+        "impact": "critical",
+        "prompt_block": "opener",
+        "category": "Привратник",
+        "weight": 3,
+        "share": 0.0092,
+        "count": 8,
+        "lift_on_advance": -0.0462
+      },
+      {
+        "psy_id": "PSY-112",
+        "name": "Отраслевой кейс (из отрасли клиента)",
+        "polarity": "positive",
+        "impact": "critical",
+        "prompt_block": "offer",
+        "category": "Сторителлинг",
+        "weight": 3,
+        "share": 0.0081,
+        "count": 7,
+        "lift_on_advance": 0.0967
+      },
+      {
+        "psy_id": "PSY-097",
+        "name": "Презумптивное закрытие (как свершившийся факт)",
+        "polarity": "positive",
+        "impact": "critical",
+        "prompt_block": "closing",
+        "category": "Закрытие",
+        "weight": 3,
+        "share": 0.0081,
+        "count": 7,
+        "lift_on_advance": 0.0967
+      },
+      {
+        "psy_id": "PSY-083",
+        "name": "Бумеранг: возражение → аргумент за встречу",
+        "polarity": "positive",
+        "impact": "critical",
+        "prompt_block": "closing",
+        "category": "Возражения",
+        "weight": 3,
+        "share": 0.0081,
+        "count": 7,
+        "lift_on_advance": 0.0967
+      },
+      {
+        "psy_id": "PSY-145",
+        "name": "Бизнес-язык (риски → деньги/время)",
+        "polarity": "positive",
+        "impact": "critical",
+        "prompt_block": "offer",
+        "category": "Ценность",
+        "weight": 3,
+        "share": 0.0069,
+        "count": 6,
+        "lift_on_advance": -0.0462
+      },
+      {
+        "psy_id": "PSY-064",
+        "name": "Эмоциональная глухота к раздражению",
+        "polarity": "negative",
+        "impact": "critical",
+        "prompt_block": "context",
+        "category": "Эмоции",
+        "weight": 3,
+        "share": 0.0058,
+        "count": 5,
+        "lift_on_advance": -0.0462
+      },
+      {
+        "psy_id": "PSY-102",
+        "name": "Фиксация договорённости (дата/время/канал)",
+        "polarity": "positive",
+        "impact": "critical",
+        "prompt_block": "closing",
+        "category": "Закрытие",
+        "weight": 3,
+        "share": 0.0058,
+        "count": 5,
+        "lift_on_advance": 0.7538
+      },
+      {
+        "psy_id": "PSY-159",
+        "name": "Прыжок через ступени (сразу к встрече)",
+        "polarity": "negative",
+        "impact": "high",
+        "prompt_block": "closing",
+        "category": "Обязательства",
+        "weight": 2,
+        "share": 0.0081,
+        "count": 7,
+        "lift_on_advance": -0.0462
+      },
+      {
+        "psy_id": "PSY-004",
+        "name": "Эмпатическое присоединение",
+        "polarity": "positive",
+        "impact": "high",
+        "prompt_block": "opener",
+        "category": "Раппорт",
+        "weight": 2,
+        "share": 0.0081,
+        "count": 7,
+        "lift_on_advance": 0.0967
+      },
+      {
+        "psy_id": "PSY-151",
+        "name": "Feature dump (перечисление функций)",
+        "polarity": "negative",
+        "impact": "critical",
+        "prompt_block": "offer",
+        "category": "Ценность",
+        "weight": 3,
+        "share": 0.0046,
+        "count": 4,
+        "lift_on_advance": -0.0462
+      },
+      {
+        "psy_id": "PSY-032",
+        "name": "Взаимность: ценность вперёд (бесплатно)",
+        "polarity": "positive",
+        "impact": "critical",
+        "prompt_block": "offer",
+        "category": "Влияние",
+        "weight": 3,
+        "share": 0.0035,
+        "count": 3,
+        "lift_on_advance": 0.2871
+      },
+      {
+        "psy_id": "PSY-108",
+        "name": "Пассивное закрытие («надумаете — звоните»)",
+        "polarity": "negative",
+        "impact": "critical",
+        "prompt_block": "closing",
+        "category": "Закрытие",
+        "weight": 3,
+        "share": 0.0035,
+        "count": 3,
+        "lift_on_advance": -0.0462
+      },
+      {
+        "psy_id": "PSY-045",
+        "name": "Извлекающий вопрос о последствиях (SPIN)",
+        "polarity": "positive",
+        "impact": "critical",
+        "prompt_block": "offer",
+        "category": "Вопросы",
+        "weight": 3,
+        "share": 0.0035,
+        "count": 3,
+        "lift_on_advance": -0.0462
+      },
+      {
+        "psy_id": "PSY-148",
+        "name": "Бесплатный якорь (демо/аудит без обязательств)",
+        "polarity": "positive",
+        "impact": "critical",
+        "prompt_block": "offer",
+        "category": "Ценность",
+        "weight": 3,
+        "share": 0.0035,
+        "count": 3,
+        "lift_on_advance": -0.0462
+      },
+      {
+        "psy_id": "PSY-057",
+        "name": "Считывание интереса (углубление темы)",
+        "polarity": "positive",
+        "impact": "high",
+        "prompt_block": "context",
+        "category": "Эмоции",
+        "weight": 2,
+        "share": 0.0046,
+        "count": 4,
+        "lift_on_advance": -0.0462
+      },
+      {
+        "psy_id": "PSY-142",
+        "name": "Нулевая подготовка (шаблонный звонок)",
+        "polarity": "negative",
+        "impact": "high",
+        "prompt_block": "opener",
+        "category": "Персонализация",
+        "weight": 2,
+        "share": 0.0046,
+        "count": 4,
+        "lift_on_advance": -0.0462
+      },
+      {
+        "psy_id": "PSY-109",
+        "name": "Размытый next step («как-нибудь перезвоню»)",
+        "polarity": "negative",
+        "impact": "high",
+        "prompt_block": "closing",
+        "category": "Закрытие",
+        "weight": 2,
+        "share": 0.0035,
+        "count": 3,
+        "lift_on_advance": -0.0462
+      },
+      {
+        "psy_id": "PSY-028",
+        "name": "Соц. доказательство (число клиентов)",
+        "polarity": "positive",
+        "impact": "high",
+        "prompt_block": "offer",
+        "category": "Влияние",
+        "weight": 2,
+        "share": 0.0035,
+        "count": 3,
+        "lift_on_advance": 0.2871
+      },
+      {
+        "psy_id": "PSY-026",
+        "name": "Фрейм извинения («простите за беспокойство»)",
+        "polarity": "negative",
+        "impact": "high",
+        "prompt_block": "opener",
+        "category": "Фрейм",
+        "weight": 2,
+        "share": 0.0035,
+        "count": 3,
+        "lift_on_advance": -0.0462
+      },
+      {
+        "psy_id": "PSY-055",
+        "name": "Отсутствие вопросов (чистый монолог)",
+        "polarity": "negative",
+        "impact": "critical",
+        "prompt_block": "offer",
+        "category": "Вопросы",
+        "weight": 3,
+        "share": 0.0023,
+        "count": 2,
+        "lift_on_advance": -0.0462
+      },
+      {
+        "psy_id": "PSY-133",
+        "name": "Раскрытие коммерческой цели секретарю",
+        "polarity": "negative",
+        "impact": "critical",
+        "prompt_block": "opener",
+        "category": "Привратник",
+        "weight": 3,
+        "share": 0.0023,
+        "count": 2,
+        "lift_on_advance": -0.0462
+      },
+      {
+        "psy_id": "PSY-082",
+        "name": "Feel-Felt-Found (нормализация через опыт других)",
+        "polarity": "positive",
+        "impact": "critical",
+        "prompt_block": "offer",
+        "category": "Возражения",
+        "weight": 3,
+        "share": 0.0012,
+        "count": 1,
+        "lift_on_advance": -0.0462
+      },
+      {
+        "psy_id": "PSY-068",
+        "name": "Пресуппозиция («когда мы встретимся…»)",
+        "polarity": "positive",
+        "impact": "critical",
+        "prompt_block": "closing",
+        "category": "НЛП",
+        "weight": 3,
+        "share": 0.0012,
+        "count": 1,
+        "lift_on_advance": -0.0462
+      },
+      {
+        "psy_id": "PSY-039",
+        "name": "Давление без раппорта",
+        "polarity": "negative",
+        "impact": "critical",
+        "prompt_block": "offer",
+        "category": "Влияние",
+        "weight": 3,
+        "share": 0.0012,
+        "count": 1,
+        "lift_on_advance": -0.0462
+      },
+      {
+        "psy_id": "PSY-161",
+        "name": "Адаптивность (смена стратегии по реакциям)",
+        "polarity": "positive",
+        "impact": "critical",
+        "prompt_block": "context",
+        "category": "Мета",
+        "weight": 3,
+        "share": 0.0012,
+        "count": 1,
+        "lift_on_advance": -0.0462
+      },
+      {
+        "psy_id": "PSY-111",
+        "name": "Кейс-история (конкретный пример с деталями)",
+        "polarity": "positive",
+        "impact": "critical",
+        "prompt_block": "offer",
+        "category": "Сторителлинг",
+        "weight": 3,
+        "share": 0.0012,
+        "count": 1,
+        "lift_on_advance": -0.0462
+      },
+      {
+        "psy_id": "PSY-154",
+        "name": "Микро-согласие на разговор",
+        "polarity": "positive",
+        "impact": "high",
+        "prompt_block": "opener",
+        "category": "Обязательства",
+        "weight": 2,
+        "share": 0.0012,
+        "count": 1,
+        "lift_on_advance": 0.9538
+      },
+      {
+        "psy_id": "PSY-053",
+        "name": "Допрос (5+ вопросов подряд)",
+        "polarity": "negative",
+        "impact": "high",
+        "prompt_block": "offer",
+        "category": "Вопросы",
+        "weight": 2,
+        "share": 0.0012,
+        "count": 1,
+        "lift_on_advance": -0.0462
+      },
+      {
+        "psy_id": "PSY-084",
+        "name": "Изоляция возражения («это единственное?»)",
+        "polarity": "positive",
+        "impact": "high",
+        "prompt_block": "closing",
+        "category": "Возражения",
+        "weight": 2,
+        "share": 0.0012,
+        "count": 1,
+        "lift_on_advance": -0.0462
+      },
+      {
+        "psy_id": "PSY-120",
+        "name": "Оптимальный хронометраж (не затянуто)",
+        "polarity": "positive",
+        "impact": "high",
+        "prompt_block": "context",
+        "category": "Темп",
+        "weight": 2,
+        "share": 0.0012,
+        "count": 1,
+        "lift_on_advance": -0.0462
+      },
+      {
+        "psy_id": "PSY-079",
+        "name": "Слова-ослабители («может быть», «как бы»)",
+        "polarity": "negative",
+        "impact": "high",
+        "prompt_block": "offer",
+        "category": "НЛП",
+        "weight": 2,
+        "share": 0.0012,
+        "count": 1,
+        "lift_on_advance": -0.0462
+      }
+    ],
+    "objection_clusters": [
+      {
+        "type": "no_time",
+        "label": "Нет времени / позже",
+        "gap": "prompt",
+        "count": 81,
+        "verbatims": [
+          "Нужно временно подумать.",
+          "Такие решения сходу не принимаются. Нужно посоветоваться.",
+          "Может, я лучше в воскресенье подъеду?",
+          "Слишком ответственное решение, нужно подумать.",
+          "Пошла ты на хуй!",
+          "А если я перезвоню сегодня чуть позже или уже завтра? Хорошо. Что-то ещё?",
+          "В 2084 году наберите меня в понедельник, 12-го числа",
+          "Нужно временно подумать.",
+          "Тридцать секунд позже можно? Обедаю.",
+          "Здравствуйте! Вопрос касается оплаты... Поняла. Нужно ли вам перезвонить?",
+          "Алё! Я не слышу вас. Перезвоните ещё раз.",
+          "Рандинка Красная отвечает вот за оптово-розничную торговлю, закупку и торговлю. Он на обед ушел, да? На обед ушли. Дайте он вам перезвонит вот по этому телефону",
+          "Сложно сказать. Надо подумать.",
+          "Не, не могу сейчас я, занято.Созвонитесь в понедельник.",
+          "Ой, нет, щас не до этого, извините, на работе."
+        ],
+        "by_stage": {
+          "S1": 22,
+          "S0": 42,
+          "S2": 13,
+          "S3": 4
+        }
+      },
+      {
+        "type": "no_need",
+        "label": "Не нужно / не актуально",
+        "gap": "positioning",
+        "count": 72,
+        "verbatims": [
+          "Не занимаюсь, не занимаюсь этой деятельностью, не занимаюсь деятельностью.",
+          "Мы ничего не продаём. Этот вопрос вообще не к нашему предприятию.",
+          "нас не интересует у вас, как продажи",
+          "я с роботами не разговариваю",
+          "Нет, не интересно мне, спасибо.",
+          "Да тое-то вы не туда попали.",
+          "Это не он.",
+          "Не-е, спасибо, не нужно, неинтересно. Были такие предложения.",
+          "Иди на хуй! Запиши: иди на хуй!",
+          "Ну, мне ж не надо. Я же в-вас сбросила, потому что мне не нужно, иначе бы я прослушала дальше.",
+          "У меня никакого отдела продаж нету",
+          "У нас нет отдела продаж.",
+          "Мы уже внедрили. Спасибо, не нужно.Спасибо.",
+          "Спасибо. Всего доброго.",
+          "У меня нет оптовых продаж."
+        ],
+        "by_stage": {
+          "S0": 60,
+          "S1": 11,
+          "S2": 1
+        }
+      },
+      {
+        "type": "gatekeeper",
+        "label": "Не я решаю / секретарь",
+        "gap": "routing",
+        "count": 17,
+        "verbatims": [
+          "Понятно. Сейчас передам, что вы звонили.",
+          "Пока что абонент разговаривает, но я передам ему ваш ответ. У вас к нему срочный вопрос?",
+          "Вы чё, тупая? Я говорю, это не компания.",
+          "Это секретарь. Я запишу и точно передам, что вы звонили. С вами свяжутся. А я пошёл играть в пасьянс «Косынка».",
+          "Понятно. Сейчас передам, что вы звонили.",
+          "Пока что абонент разговаривает, но я передам ему ваш ответ. У вас к нему срочный вопрос?",
+          "Нет, не ладно. А вы знаете, кому звоните?",
+          "Ну, это к коммерческому. Блин, спасибо.",
+          "С коммерческим.",
+          "Будет коммерческому директору.",
+          "Это налоговая инспекция федеральная. ИНН ваш, пожалуйста, юрлицо.",
+          "Пока что абонент разговаривает, но я передам ему ваш ответ. У вас к нему срочный вопрос?",
+          "Здравствуйте! По поводу оплаты с вами свяжутся. Нужно ли вам перезвонить?",
+          "Что за отдел продаж? У нас тут отдел продажи нету, мы Грузоперевозки делаем.",
+          "Вы попали в робота-помощника. Оставьте свой номер телефона, и мы свяжемся с вами."
+        ],
+        "by_stage": {
+          "S2": 2,
+          "S1": 5,
+          "S0": 10
+        }
+      },
+      {
+        "type": "have_internal",
+        "label": "Делаем сами",
+        "gap": "product",
+        "count": 6,
+        "verbatims": [
+          "Если вы знаете внутренний номер сотрудника, нажмите ноль.",
+          "Нажмите ноль, если вы работаете в отделе продаж, или цифру четыре. Если вы знаете внутренний номер сотрудника, наберите его в тоновом режиме или дождитесь ответ",
+          "Искусственный интеллект поставьте в свой отдел звонков.",
+          "Искусственных интеллектов-- у нас из искусственных интеллектов три человека работает. Нам он не нужен. У нас есть свой внутренний.",
+          "Е, ПТО, четыре. Если вы знаете внутренний номер сотрудника, наберите его в тоновом режиме или дождитесь ответа секретаря.",
+          "Е, ПТО, четыре. Если вы знаете внутренний номер сотрудника, наберите его в тоновом режиме или дождитесь ответа секретаря."
+        ],
+        "by_stage": {
+          "S0": 5,
+          "S1": 1
+        }
+      },
+      {
+        "type": "have_alternative",
+        "label": "Уже есть решение",
+        "gap": "product",
+        "count": 4,
+        "verbatims": [
+          "У меня уже и такой робот стоит, поэтому на первой линии всех обзванивает",
+          "Да нет, я ж вам говорю, у нас уже работает искусственный интеллект. Продал — всё. Сидеть не на чем.",
+          "Мне уже звонили с подобными предложениями",
+          "Да ну, я не знаю. У меня уже есть люди, которые прозванивают базу."
+        ],
+        "by_stage": {
+          "S1": 2,
+          "S0": 2
+        }
+      },
+      {
+        "type": "other",
+        "label": "other",
+        "gap": "prompt",
+        "count": 3,
+        "verbatims": [
+          "Мы не работаем в химической промышленности. В Новгороде.",
+          "Иди на хуй!",
+          "Пошёл нахуй!"
+        ],
+        "by_stage": {
+          "S2": 1,
+          "S0": 1,
+          "S1": 1
+        }
+      },
+      {
+        "type": "send_info",
+        "label": "Пришлите на почту",
+        "gap": "prompt",
+        "count": 2,
+        "verbatims": [
+          "Вы можете отправить просто на почту информацию.",
+          "Надо, я скину вам, там, в Телеграм. Или на телефон"
+        ],
+        "by_stage": {
+          "S2": 1,
+          "S0": 1
+        }
+      },
+      {
+        "type": "no_budget",
+        "label": "Нет бюджета",
+        "gap": "pricing",
+        "count": 2,
+        "verbatims": [
+          "у меня нет времени на автоматику. Найдите кого-нибудь. У нас нет, нет столько машин, чтобыыы кейсы покупать пооо доставке.",
+          "Де-девушка, да нам ничё не нужно, у нас денег нет, мы ничё не покупаем. Понятно?"
+        ],
+        "by_stage": {
+          "S0": 2
+        }
+      },
+      {
+        "type": "not_priority",
+        "label": "Не приоритет",
+        "gap": "positioning",
+        "count": 1,
+        "verbatims": [
+          "Не рассматриваем."
+        ],
+        "by_stage": {
+          "S0": 1
+        }
+      },
+      {
+        "type": "price",
+        "label": "Дорого / цена",
+        "gap": "pricing",
+        "count": 1,
+        "verbatims": [
+          "Ага, а там, а, комплектация стоит. У нас арт вот с этим пакетом. Ага. Ну, я-я в России, если ставим на цену ."
+        ],
+        "by_stage": {
+          "S0": 1
+        }
+      }
+    ],
+    "pitch": {
+      "resonated": [
+        {
+          "phrase": "Хотели показать — это к вам вопрос или к коммерческому директору",
+          "stayed": 146,
+          "left": 98
+        },
+        {
+          "phrase": "Мы запускаем ИИ-продавца в первую линию продаж: он сам прозванивает базу, квалифицирует клиентов и передаёт менеджерам только горячих",
+          "stayed": 106,
+          "left": 69
+        },
+        {
+          "phrase": "В Оптовой торговле уже работаем — есть конкретный кейс с цифрами",
+          "stayed": 59,
+          "left": 30
+        },
+        {
+          "phrase": "В какое время вам сегодня или завтра было бы удобно созвониться",
+          "stayed": 56,
+          "left": 13
+        },
+        {
+          "phrase": "В Грузоперевозках уже работаем — есть конкретный кейс с цифрами",
+          "stayed": 7,
+          "left": 5
+        }
+      ],
+      "fell_flat": [
+        {
+          "phrase": "Тридцать секунд займет, ладно",
+          "left": 629,
+          "stayed": 185
+        },
+        {
+          "phrase": "Звоню насчёт искусственного интеллекта в вашем отделе продаж — у нас есть кейс по Оптовой торговле, хотела показать",
+          "left": 301,
+          "stayed": 99
+        },
+        {
+          "phrase": "Звоню насчёт искусственного интеллекта в вашем отделе продаж — у нас есть кейс по Финансах, хотела показать",
+          "left": 67,
+          "stayed": 8
+        },
+        {
+          "phrase": "Звоню насчёт искусственного интеллекта в вашем отделе продаж — у нас есть кейс по Химической промышленности, хотела показать",
+          "left": 49,
+          "stayed": 9
+        },
+        {
+          "phrase": "Звоню насчёт искусственного интеллекта в вашем отделе продаж — у нас есть кейс по Грузоперевозках, хотела показать",
+          "left": 34,
+          "stayed": 12
+        }
+      ]
+    }
+  },
+  "instrumentation_spec": [
+    {
+      "id": "latency_to_first_token",
+      "name": "Задержка до первой реплики бота (dead-air)",
+      "needs": "Пер-реплик таймстемпы начала/конца речи в записи.",
+      "why": "Пауза >1.5–2 с после ответа клиента — главная причина «алло?» и сброса. Из текста не виден; именно он часто рушит опенер, а не слова.",
+      "unlocks": "Корреляция dead-air ↔ early_drop_rate; A/B на скорость отклика."
+    },
+    {
+      "id": "barge_in_rate",
+      "name": "Перебивания (barge-in)",
+      "needs": "Флаги наложения речи (клиент заговорил поверх бота) из VAD/диаризации.",
+      "why": "Бот, который не умеет замолкать при перебивании, воспринимается как робот и злит. В тексте перебивание выглядит как обычная реплика.",
+      "unlocks": "Метрика «уважение к перебиванию»; правка длины реплик и barge-in policy."
+    },
+    {
+      "id": "asr_confidence",
+      "name": "Уверенность распознавания (ASR confidence)",
+      "needs": "Пер-слово/пер-реплика confidence от ASR-движка.",
+      "why": "Прямой сигнал «бот не расслышал» ДО того, как клиент скажет «что?». Наш текстовый repair-rate — лишь поздний прокси.",
+      "unlocks": "Ранний детектор обвала связи; авто-перенос звонка; чистка метрик от ASR-шума."
+    },
+    {
+      "id": "prosody_sentiment",
+      "name": "Тон/эмоция клиента (просодия)",
+      "needs": "Аудио-фичи: высота тона, темп, громкость, паузы; аудио-сентимент.",
+      "why": "Раздражение/интерес слышно в голосе раньше, чем в словах. Текст «да» нейтрален, а тон может быть ледяным.",
+      "unlocks": "Ранний индикатор оттока в разговоре; качество как опережающий показатель."
+    },
+    {
+      "id": "talk_overlap_silence",
+      "name": "Точные talk/listen и доля тишины",
+      "needs": "Временные границы речи каждого спикера.",
+      "why": "Наш talk-share считается по словам — грубо. Реальная доля времени и паузы точнее показывают монолог и неловкие молчания.",
+      "unlocks": "Честный talk-to-listen во времени; детектор затянутых пауз."
+    },
+    {
+      "id": "interruption_recovery",
+      "name": "Восстановление после сбоя",
+      "needs": "Аудио-маркеры повторов + тайминги.",
+      "why": "Сколько секунд бот тратит на восстановление после «не слышу» — прямой ущерб AHT и нервам клиента.",
+      "unlocks": "Стоимость ASR-петель в секундах; приоритизация телефонных правок."
+    }
+  ]
+}

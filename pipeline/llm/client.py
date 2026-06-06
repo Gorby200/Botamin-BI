@@ -153,7 +153,7 @@ class LLMClient:
                 # rate_limit -> retry with exponential backoff
                 if resp.error_category == "rate_limit":
                     if attempt < settings.LLM_RETRY_COUNT:
-                        backoff = min(settings.LLM_RETRY_DELAY_SEC * (2 ** (attempt - 1)), 30)
+                        backoff = min(settings.LLM_RETRY_DELAY_SEC * (2 ** (attempt - 1)), 60)
                         logger.info("Rate limit hit, retrying in %.1fs...", backoff)
                         await asyncio.sleep(backoff)
                         continue
