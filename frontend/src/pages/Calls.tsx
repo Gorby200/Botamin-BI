@@ -2,8 +2,10 @@ import { useState, useMemo } from "react";
 import { useCallIndex, useCallDetail, fmtDuration, stageColor } from "../hooks";
 import Badge from "../components/Badge";
 import Skeleton from "../components/Skeleton";
-import { Search, X, Volume2, User, Bot, ChevronLeft, ChevronRight, Sparkles, ShieldHalf } from "lucide-react";
+import { Search, X, Volume2, User, Bot, ChevronLeft, ChevronRight, Sparkles, ShieldHalf,
+         ThumbsUp, ThumbsDown, Lightbulb, Quote, Wrench, Target, Award } from "lucide-react";
 import { stageLabels, pct } from "../format";
+import type { QualityScore } from "../types";
 
 const PAGE_SIZE = 50;  // Match pipeline batch size for consistency
 const STAGE_FILTERS = [
@@ -157,6 +159,9 @@ function CallDrawer({ id, pageHint, onClose }: { id: string; pageHint?: string; 
               <span className="text-[var(--color-ink-tertiary)]">{data.summary}</span>
             </div>
 
+            {/* V4 quality + gap */}
+            {data.quality && <QualityGap q={data.quality} />}
+
             {/* Stage evidence */}
             <div>
               <h4 className="text-[10px] font-medium uppercase tracking-wider text-[var(--color-ink-tertiary)] mb-2">Разметка стадий (по словам клиента)</h4>
@@ -184,13 +189,85 @@ function CallDrawer({ id, pageHint, onClose }: { id: string; pageHint?: string; 
               <Tile label="Речь бота" v={pct(data.voice.bot_talk_share, 0)} />
             </div>
 
-            {/* Patterns + objections */}
-            {(data.detected_patterns?.length > 0 || data.objections?.length > 0) && (
-              <div className="flex flex-wrap gap-1.5">
-                {data.detected_patterns?.map((p, i) => (
-                  <Badge key={i} variant={p.polarity === "negative" ? "negative" : "positive"}>{p.id}</Badge>
-                ))}
-                {data.objections?.map((o, i) => <Badge key={`o${i}`} variant="warning">{o.type}</Badge>)}
+            {/* Psychological patterns (with names + evidence) */}
+            {data.detected_patterns?.length > 0 && (
+              <div>
+                <h4 className="text-[10px] font-medium uppercase tracking-wider text-[var(--color-ink-tertiary)] mb-2">Психологические паттерны бота</h4>
+                <div className="space-y-1.5">
+                  {data.detected_patterns.map((p, i) => {
+                    const bad = p.polarity === "negative";
+                    return (
+                      <div key={i} className="flex items-start gap-2 text-xs">
+                        {bad ? <ThumbsDown size={13} className="mt-0.5 shrink-0 text-[var(--color-band-bad)]" />
+                             : <ThumbsUp size={13} className="mt-0.5 shrink-0 text-[var(--color-band-good)]" />}
+                        <Badge variant={bad ? "negative" : "positive"}>{p.id}</Badge>
+                        <div className="min-w-0">
+                          <span className="text-[var(--color-ink-secondary)]">{p.name || p.id}</span>
+                          {p.quote && <p className="text-[10px] italic text-[var(--color-ink-muted)] mt-0.5">«{p.quote.slice(0, 90)}»</p>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Objections (with root cause) */}
+            {data.objections?.length > 0 && (
+              <div>
+                <h4 className="text-[10px] font-medium uppercase tracking-wider text-[var(--color-ink-tertiary)] mb-2">Возражения</h4>
+                <div className="space-y-1.5">
+                  {data.objections.map((o, i) => (
+                    <div key={i} className="text-xs">
+                      <Badge variant="warning">{o.type}</Badge>
+                      {o.quote && <span className="ml-1.5 italic text-[var(--color-ink-tertiary)]">«{o.quote.slice(0, 80)}»</span>}
+                      {o.root_cause && <p className="text-[10px] text-[var(--color-ink-muted)] mt-0.5">причина: {o.root_cause}</p>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Product-intel / CustDev (LLM) */}
+            {(data.product_intel?.insights?.length || hasJTBD(data.product_intel)) && (
+              <div>
+                <h4 className="text-[10px] font-medium uppercase tracking-wider text-[var(--color-ink-tertiary)] mb-2">
+                  <Lightbulb size={12} className="inline mr-1 text-[var(--color-secondary)]" />Продуктовые инсайты (CustDev)
+                </h4>
+                {hasJTBD(data.product_intel) && (
+                  <div className="rounded-[var(--radius-md)] bg-[var(--color-bg-card-hover)] px-3 py-2 mb-2 text-xs space-y-0.5">
+                    {data.product_intel!.jtbd.functional && <p><b className="text-[var(--color-ink)]">JTBD:</b> {data.product_intel!.jtbd.functional}</p>}
+                    {data.product_intel!.jtbd.trigger && <p className="text-[var(--color-ink-tertiary)]">Триггер: {data.product_intel!.jtbd.trigger}</p>}
+                  </div>
+                )}
+                <div className="space-y-1.5">
+                  {data.product_intel?.insights?.map((it, i) => (
+                    <div key={i} className="flex items-start gap-1.5 text-xs border-l-2 border-[var(--color-accent-subtle)] pl-2 py-0.5">
+                      <Quote size={11} className="mt-0.5 shrink-0 text-[var(--color-ink-muted)]" />
+                      <div className="min-w-0">
+                        <Badge>{it.category}</Badge>{" "}
+                        <span className="text-[var(--color-ink-secondary)]">{it.insight}</span>
+                        {it.quote && <p className="italic text-[var(--color-ink-muted)] mt-0.5">«{it.quote.slice(0, 100)}»</p>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Recommendations */}
+            {data.recommendations && data.recommendations.length > 0 && (
+              <div>
+                <h4 className="text-[10px] font-medium uppercase tracking-wider text-[var(--color-ink-tertiary)] mb-2">
+                  <Wrench size={12} className="inline mr-1 text-[var(--color-accent)]" />Что подкрутить
+                </h4>
+                <ul className="space-y-1">
+                  {data.recommendations.map((r, i) => (
+                    <li key={i} className="text-xs text-[var(--color-ink-secondary)] flex gap-1.5">
+                      <span className="text-[var(--color-accent)]">•</span><span>{r}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
 
@@ -233,6 +310,57 @@ function Tile({ label, v }: { label: string; v: string }) {
     <div className="rounded-[var(--radius-md)] bg-[var(--color-bg-card-hover)] p-3 text-center">
       <div className="text-[10px] uppercase tracking-wider text-[var(--color-ink-tertiary)]">{label}</div>
       <div className="stat-num text-lg mt-0.5">{v}</div>
+    </div>
+  );
+}
+
+function hasJTBD(pi?: { jtbd?: { functional?: string; emotional?: string; trigger?: string } }) {
+  const j = pi?.jtbd;
+  return !!(j && (j.functional || j.emotional || j.trigger));
+}
+
+const GRADE_CLR: Record<string, string> = {
+  A: "var(--color-band-good)", B: "var(--color-band-good)", C: "var(--color-band-ok)",
+  D: "var(--color-band-bad)", F: "var(--color-band-bad)",
+};
+
+function QualityGap({ q }: { q: QualityScore }) {
+  const gapBand = q.gap.gap > 1.5 ? "band-bad" : q.gap.gap < -1.5 ? "" : "band-good";
+  const sign = q.gap.gap >= 0 ? "+" : "";
+  return (
+    <div className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card-hover)] p-3.5">
+      <div className="flex items-center justify-between mb-3">
+        <h4 className="text-[10px] font-medium uppercase tracking-wider text-[var(--color-ink-tertiary)]">
+          <Award size={12} className="inline mr-1" />Качество ведения (V4)
+        </h4>
+        <span className="stat-num text-2xl" style={{ color: GRADE_CLR[q.grade] || "var(--color-ink)" }} title={q.grade_name}>
+          {q.grade}
+        </span>
+      </div>
+      <div className="grid grid-cols-3 gap-2 mb-3">
+        <MiniLayer label="Macro" v={q.macro} />
+        <MiniLayer label="Micro" v={q.micro} />
+        <MiniLayer label="Overlap" v={q.overlap} />
+      </div>
+      <div className="flex items-center justify-between text-xs border-t border-[var(--color-border)] pt-2.5">
+        <span className="text-[var(--color-ink-tertiary)]">Качество <b className="stat-num text-[var(--color-ink)]">{q.total.toFixed(1)}</b> · Результат <b className="stat-num text-[var(--color-ink)]">{q.outcome.toFixed(1)}</b></span>
+        <span className="flex items-center gap-1"><Target size={12} className="text-[var(--color-ink-muted)]" />
+          <span className={`stat-num ${gapBand}`}>gap {sign}{q.gap.gap.toFixed(1)}</span></span>
+      </div>
+      <p className="mt-1.5 text-[11px] text-[var(--color-ink-tertiary)] leading-snug">{q.gap.interpretation}</p>
+    </div>
+  );
+}
+
+function MiniLayer({ label, v }: { label: string; v: number }) {
+  return (
+    <div>
+      <div className="flex items-center justify-between text-[10px] text-[var(--color-ink-tertiary)] mb-0.5">
+        <span>{label}</span><span className="stat-num">{v.toFixed(1)}</span>
+      </div>
+      <div className="h-1.5 rounded-full bg-[var(--color-border)] overflow-hidden">
+        <div className="h-full rounded-full bg-[var(--color-accent)]" style={{ width: `${Math.max(0, Math.min(100, v * 10))}%` }} />
+      </div>
     </div>
   );
 }

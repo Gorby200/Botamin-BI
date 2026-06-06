@@ -30,6 +30,7 @@ from .diagnostics import (
     audit_bot_patterns, cluster_objections, analyze_pitch, generate_backlog,
 )
 from .custdev import build_custdev
+from .patterns import pattern_meta
 
 
 logger = logging.getLogger(__name__)
@@ -133,10 +134,13 @@ def _extract_features(row: pd.Series) -> dict:
 def _flatten(analysis: dict) -> dict:
     """Flatten the unified analysis contract into scalar/list columns for metrics."""
     v = analysis.get("voice", {})
+    connected = bool(analysis.get("connected", False))
     return {
         "source": analysis.get("source", "deterministic"),
-        "connected": bool(analysis.get("connected", False)),
-        "furthest_stage": int(analysis.get("furthest_stage", -1)),
+        "connected": connected,
+        # Canonical: a non-connected call has NO stage. This keeps the per-call index
+        # (furthest_stage >= 0) and the aggregate `engaged` count in exact agreement.
+        "furthest_stage": int(analysis.get("furthest_stage", -1)) if connected else -1,
         "outcome": analysis.get("outcome", "no_contact"),
         "disqualified": bool(analysis.get("disqualified", False)),
         "end_attribution": analysis.get("end_attribution", ""),
@@ -154,22 +158,6 @@ def _flatten(analysis: dict) -> dict:
         "stage_evidence": analysis.get("stage_evidence", {}),
         "summary": analysis.get("summary", ""),
     }
-
-
-def _select_for_llm(features: list[dict], scope: str) -> list[int]:
-    """Return row indices to send to the LLM under the given scope."""
-    idxs = []
-    if scope == "off":
-        return idxs
-    connected = [i for i, f in enumerate(features) if f["analysis"]["connected"]]
-    if scope == "full":
-        return connected
-    if scope == "sample":
-        # deterministic pseudo-sample (no RNG to keep runs reproducible): every k-th
-        k = max(1, len(connected) // max(settings.LLM_SAMPLE_SIZE, 1))
-        return connected[::k][: settings.LLM_SAMPLE_SIZE]
-    # focus (default): substantive dialogues only
-    return [i for i in connected if features[i]["client_turns"] >= settings.MIN_CLIENT_TURNS]
 
 
 def run_pipeline(
@@ -210,40 +198,27 @@ def run_pipeline(
     features = [_extract_features(row) for _, row in df.iterrows()]
     call_ids = [f"c_{i:05d}" for i in range(len(df))]
 
-    # 4. LLM overlay (three-tier architecture)
-    llm_status = {
-        "configured": settings.llm_configured,
-        "provider": settings.primary_provider,
-        "scope": scope,
-        "mode": "deterministic",       # -> "llm_tiered" if three-tier runs
-        "calls_analyzed": 0,
-        "calls_selected": 0,
-        "available": False,
-        "note": "",
-        "tier1_analyzed": 0,
-        "tier2_analyzed": 0,
-        "tier3_run": False,
-        "tier3_results": None,
-    }
+    # 4. LLM single pass — ONE cached call per selected dialogue overlays the
+    #    deterministic failsafe with the richer contract (stages + patterns + V4
+    #    quality + product-intel). Everything numeric stays deterministic downstream.
     if scope != "off" and settings.llm_configured:
         from pipeline.llm.orchestrator import integrate_with_pipeline
 
-        print(f"\n[4/6] Three-tier LLM analysis ({scope})...")
+        print(f"\n[4/6] LLM single-pass analysis ({scope})...")
         features, llm_status = integrate_with_pipeline(features, scope)
-
-        tier3_available = bool(llm_status.get("tier3_results"))
-        if tier3_available:
-            print(f"  Tier 1: {llm_status.get('tier1_analyzed', 0)} calls screened")
-            print(f"  Tier 2: {llm_status.get('tier2_analyzed', 0)} calls analyzed in detail")
-            print(f"  Tier 3: Research insights available")
-        else:
-            print(f"  Tier 1: {llm_status.get('tier1_analyzed', 0)} calls screened")
-            print(f"  Tier 2: {llm_status.get('tier2_analyzed', 0)} calls analyzed in detail")
-            print(f"  Tier 3: Skipped (insufficient data or disabled)")
+        print(f"  Analyzed {llm_status.get('calls_analyzed', 0)}/"
+              f"{llm_status.get('calls_selected', 0)} selected calls (mode={llm_status.get('mode')})")
+        if llm_status.get("note"):
+            print(f"  ⚠ {llm_status['note']}")
     else:
+        llm_status = {
+            "configured": settings.llm_configured, "provider": settings.primary_provider,
+            "scope": scope, "mode": "deterministic", "available": False,
+            "calls_selected": 0, "calls_analyzed": 0, "note": "",
+        }
         print("\n[4/6] LLM disabled (no key or scope=off) — deterministic only.")
         if scope != "off":
-            llm_status["note"] = "LLM-ключ не задан в .env — работает упрощённый детерминированный анализ."
+            llm_status["note"] = "LLM-ключ не задан в .env — работает детерминированный анализ."
 
     # 5. Flatten into DataFrame
     flat = pd.DataFrame([_flatten(f["analysis"]) for f in features])
@@ -267,10 +242,24 @@ def run_pipeline(
         pattern_audit=pattern_audit, objection_clusters=objection_clusters,
         loss_attribution=m["loss_attribution"], base_conversations=base_conv,
     )
-    # Build CustDev with research results if available from Tier 3
-    research_results = llm_status.get("tier3_results") if isinstance(llm_status, dict) else None
+    # CustDev — voice of the customer. NO separate LLM pass: we REDUCE the per-call
+    # product-intel insights already produced by the single analysis pass into the
+    # page contract with REAL counts. Falls back to deterministic keyword clustering
+    # when the LLM did not run.
+    custdev_insights = None
+    if scope != "off" and settings.llm_configured:
+        per_call: dict[str, list[dict]] = {}
+        for i, f in enumerate(features):
+            a = f["analysis"]
+            if a.get("source") == "llm" and a.get("connected"):
+                ins = (a.get("product_intel") or {}).get("insights") or []
+                if ins:
+                    per_call[f"c_{i:05d}"] = ins
+        custdev_insights = per_call or None
+        if custdev_insights:
+            print(f"  CustDev: reduced product-intel from {len(custdev_insights)} calls")
     custdev = build_custdev(df, features, prompt=settings.CUSTDEV_PROMPT or None,
-                           mode="deterministic", research_results=research_results)
+                            llm_insights=custdev_insights)
 
     print(f"  Reach: connect={_mval(m['reach']['metrics'],'connect_rate'):.1%} "
           f"engage={_mval(m['reach']['metrics'],'conversation_rate'):.1%}")
@@ -296,6 +285,47 @@ def _mval(metrics_list, mid):
         if x["id"] == mid:
             return x["value"]
     return 0.0
+
+
+def _quality_gap_summary(features) -> dict | None:
+    """Deterministic V4 quality + outcome + gap distribution over connected calls.
+
+    Numbers are computed here (counts/averages), never by the LLM. The per-call
+    `quality` object comes from methodology.quality_from_layers (LLM layers or the
+    deterministic approximation) — both engines populate it identically in shape.
+    """
+    rows = [f["analysis"]["quality"] for f in features
+            if f["analysis"].get("connected") and isinstance(f["analysis"].get("quality"), dict)]
+    n = len(rows)
+    if not n:
+        return None
+    avg_q = sum(r.get("total", 0.0) for r in rows) / n
+    avg_o = sum(r.get("outcome", 0.0) for r in rows) / n
+    grades: dict[str, int] = {}
+    for r in rows:
+        g = r.get("grade", "?")
+        grades[g] = grades.get(g, 0) + 1
+    closing = sum(1 for r in rows if (r.get("gap") or {}).get("gap", 0) > 1.5)
+    warm = sum(1 for r in rows if (r.get("gap") or {}).get("gap", 0) < -1.5)
+    aligned = n - closing - warm
+    avg_gap = round(avg_q - avg_o, 2)
+    if avg_gap > 1.5:
+        interp = ("Качество ведения в среднем ВЫШЕ результата: бот хорошо ведёт, но не доводит "
+                  "до встречи — узкое место в закрытии или нерелевантная база.")
+    elif avg_gap < -1.5:
+        interp = ("Результат в среднем ВЫШЕ качества: клиенты доходят несмотря на слабое ведение — "
+                  "тёплая база; промпт недоиспользует потенциал.")
+    else:
+        interp = "Качество ведения в среднем соответствует достигнутому результату."
+    return {
+        "n": n,
+        "avg_quality": round(avg_q, 2),
+        "avg_outcome": round(avg_o, 2),
+        "avg_gap": avg_gap,
+        "grade_distribution": [{"grade": g, "count": grades[g]} for g in sorted(grades)],
+        "buckets": {"closing_bottleneck": closing, "warm_base": warm, "aligned": aligned},
+        "interpretation": interp,
+    }
 
 
 def _write_outputs(out_dir, df, m, pattern_audit, objection_clusters, pitch,
@@ -324,6 +354,7 @@ def _write_outputs(out_dir, df, m, pattern_audit, objection_clusters, pitch,
         "guardrails": m["guardrails"],
         "loss_attribution": m["loss_attribution"],
         "bottleneck": m["bottleneck"],
+        "gap_analysis": _quality_gap_summary(features),
         "outcomes": m["outcomes"],
         "time_heatmap": m["time_heatmap"],
         "duration_distribution": m["duration_distribution"],
@@ -391,8 +422,15 @@ def _write_outputs(out_dir, df, m, pattern_audit, objection_clusters, pitch,
             "disqualified": analysis.get("disqualified", False),
             "stage_evidence": analysis.get("stage_evidence", {}),
             "voice": analysis.get("voice", {}),
-            "detected_patterns": analysis.get("bot_patterns", []),
+            "detected_patterns": [
+                {"id": p.get("id", ""), "polarity": p.get("polarity", ""),
+                 "quote": p.get("quote", ""), "name": pattern_meta(p.get("id", "")).get("name", "")}
+                for p in analysis.get("bot_patterns", []) if isinstance(p, dict)
+            ],
             "objections": analysis.get("objections", []),
+            "quality": analysis.get("quality", {}),
+            "product_intel": analysis.get("product_intel", {}),
+            "recommendations": analysis.get("recommendations", []),
             "transcript": transcript,
         }
 
@@ -424,7 +462,9 @@ def _print_summary(m, backlog, llm_status) -> None:
     print("\n" + "=" * 64)
     print("СВОДКА")
     print("=" * 64)
-    mode = "LLM (" + llm_status["provider"] + ")" if llm_status["mode"] == "llm" else "детерминированный (failsafe)"
+    mode = ("LLM (" + llm_status["provider"] + ")"
+            if str(llm_status.get("mode", "")).startswith("llm")
+            else "детерминированный (failsafe)")
     print(f"Режим анализа: {mode}")
     if llm_status["note"]:
         print(f"  ⚠ {llm_status['note']}")

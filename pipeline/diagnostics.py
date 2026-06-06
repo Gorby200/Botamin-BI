@@ -13,18 +13,14 @@ from collections import Counter
 
 import pandas as pd
 
-# Human-readable names + polarity + impact for the pattern ids the engines emit.
+from pipeline import patterns
+
+# Human-readable names + polarity + impact + funnel block for every catalog id.
+# Single source of truth = pipeline/patterns.py, so adding a pattern there makes it
+# flow through detection → aggregation → UI with no edits here.
 PATTERN_META = {
-    "PSY-010": ("Запрос разрешения в опенере", "positive", "high", "opener"),
-    "PSY-047": ("Альтернативное закрытие", "positive", "critical", "closing"),
-    "PSY-082": ("Feel-Felt-Found", "positive", "high", "offer"),
-    "PSY-011": ("Питч в лоб в опенере", "negative", "critical", "opener"),
-    "PSY-124": ("Затянутый монолог-питч", "negative", "critical", "offer"),
-    "PSY-094": ("Игнорирование возражения", "negative", "critical", "offer"),
-    "PSY-095": ("Преждевременная сдача", "negative", "critical", "closing"),
-    "PSY-106": ("Нет закрытия (нет CTA)", "negative", "critical", "closing"),
-    "PSY-200": ("ASR-петля (бот повторяется)", "negative", "critical", "context"),
-    "PSY-201": ("Глухота к проблеме связи", "negative", "critical", "context"),
+    pid: (m["name"], m["polarity"], m["impact"], m["prompt_block"])
+    for pid, m in patterns.CATALOG.items()
 }
 
 OBJECTION_GAP_MAP = {
@@ -74,7 +70,8 @@ def audit_bot_patterns(df: pd.DataFrame) -> list[dict]:
         weight = {"critical": 3, "high": 2, "medium": 1}.get(impact, 1)
         results.append({
             "psy_id": pid, "name": name, "polarity": polarity, "impact": impact,
-            "prompt_block": block, "weight": weight, "share": share,
+            "prompt_block": block, "category": patterns.pattern_meta(pid)["category"],
+            "weight": weight, "share": share,
             "count": st["count"], "lift_on_advance": lift,
         })
     results.sort(key=lambda x: x["weight"] * x["share"], reverse=True)

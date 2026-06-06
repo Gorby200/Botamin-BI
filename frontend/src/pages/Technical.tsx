@@ -1,4 +1,4 @@
-import { useDashboard } from "../hooks";
+import { useDashboardTuned } from "../hooks";
 import Card from "../components/Card";
 import Skeleton from "../components/Skeleton";
 import { StatRow } from "../components/Stat";
@@ -6,7 +6,8 @@ import { Lock, Database, AlertCircle } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 
 export default function Technical() {
-  const { data, loading } = useDashboard();
+  // Tuned hook so threshold overrides re-band these metrics identically to VoiceAgent.
+  const { data, loading } = useDashboardTuned();
   if (loading || !data)
     return <div className="p-8 space-y-4"><Skeleton h={40} w={320} /><Skeleton h={300} /></div>;
 

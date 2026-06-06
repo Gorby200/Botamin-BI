@@ -22,12 +22,16 @@ import asyncio
 import hashlib
 import json
 import logging
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
+from pathlib import Path
 from typing import Optional
 
 from pipeline.llm.client import LLMClient
 
 logger = logging.getLogger(__name__)
+
+# Shared on-disk cache (same dir as analyze.py / custdev.py) so a re-run is free.
+CACHE_DIR = Path(".llm_cache")
 
 # ── Batch Configuration ─────────────────────────────────────────────────────
 # Optimized for GLM-5.1 200K context window:
@@ -214,7 +218,27 @@ class BatchAnalyzer:
         h.update(model.encode())
         h.update(calls_json.encode())
         h.update(BATCH_SYSTEM_PROMPT.encode())
-        return h.hexdigest()[:24]
+        return "batch_" + h.hexdigest()[:18]
+
+    def _cache_load(self, key: str) -> Optional[list[BatchResult]]:
+        p = CACHE_DIR / f"{key}.json"
+        if not p.exists():
+            return None
+        try:
+            data = json.loads(p.read_text(encoding="utf-8"))
+            return [BatchResult(**d) for d in data]
+        except Exception:
+            return None
+
+    def _cache_save(self, key: str, results: list[BatchResult]) -> None:
+        try:
+            CACHE_DIR.mkdir(exist_ok=True)
+            (CACHE_DIR / f"{key}.json").write_text(
+                json.dumps([asdict(r) for r in results], ensure_ascii=False),
+                encoding="utf-8",
+            )
+        except Exception as e:  # pragma: no cover
+            logger.debug("batch cache write failed: %s", e)
 
     async def analyze_batch(self, calls: list[dict], model: str = "") -> list[BatchResult]:
         """Analyze a batch of calls in one LLM request.
@@ -243,9 +267,19 @@ class BatchAnalyzer:
             ) for c in calls]
 
         calls_json = self.pack_calls(calls)
-        cache_key = self._cache_key(calls_json, model)
+        cache_key = self._cache_key(calls_json, model or "")
 
-        # TODO: Implement cache get/put similar to analyze.py
+        # Cache hit: skip the LLM call entirely (re-runs over the same calls are free).
+        cached = self._cache_load(cache_key)
+        if cached is not None:
+            results = cached
+            results_map = {r.call_id: r for r in results if r.success}
+            return [
+                results_map.get(c.get("id", ""), BatchResult(
+                    call_id=c.get("id", ""), stage=-1, patterns=[], objections=[],
+                    flag=False, confidence=0.0, success=False, error="Not in response"))
+                for c in calls
+            ]
 
         try:
             resp = await self.client.complete_json(
@@ -268,6 +302,9 @@ class BatchAnalyzer:
                 ) for c in calls]
 
             results = self.unpack_response(resp.content)
+            # Persist only successful, non-empty parses (don't cache failures).
+            if results:
+                self._cache_save(cache_key, results)
 
             # Align results with input order
             results_map = {r.call_id: r for r in results if r.success}

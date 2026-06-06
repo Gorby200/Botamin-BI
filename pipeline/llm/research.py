@@ -33,11 +33,14 @@ logger = logging.getLogger(__name__)
 TEMPORAL_ANALYSIS_PROMPT = """
 Ты — продуктовый аналитик голосового AI-агента продаж.
 
-ДАННЫЕ:
+ДАННЫЕ (агрегированные метрики по часам, посчитаны пайплайном — НЕ выдумывай свои числа):
 {data}
 
+ВАЖНО: в полях metrics указывай ТОЛЬКО значения из предоставленных данных. Не сочиняй
+проценты и лифты, которых нет во входных данных. Выводы — это гипотезы, формулируй осторожно.
+
 ЗАДАЧА:
-Найди временные паттерны в.quality диалогов и конверсии.
+Найди временные паттерны в качестве диалогов и в конверсии.
 
 АНАЛИЗ:
 1. Какие часы/дни показывают аномально высокие или низкие результаты?
@@ -75,10 +78,14 @@ TEMPORAL_ANALYSIS_PROMPT = """
 """
 
 FAILURE_CLUSTERING_PROMPT = """
-Ты — expert по анализу отказов в продажах.
+Ты — эксперт по анализу отказов в продажах.
 
-ДАННЫЕ:
+ДАННЫЕ (выборка неудачных звонков):
 {data}
+
+ВАЖНО: цитаты бери ТОЛЬКО из предоставленных расшифровок (дословно). Поля size_estimate и
+pct_of_failed — это ПРИБЛИЗИТЕЛЬНЫЕ оценки по выборке (гипотезы), а не точные измерения;
+оценивай консервативно и не выдавай выдуманные точные числа за факт.
 
 ЗАДАЧА:
 Сгруппируй неудачные звонки в кластеры по причине потери клиента.
@@ -119,10 +126,14 @@ FAILURE_CLUSTERING_PROMPT = """
 """
 
 CONVERSION_SIGNALS_PROMPT = """
-Ты — data scientist, специализирующийся на predictive analytics для продаж.
+Ты — data scientist, специализирующийся на предиктивной аналитике для продаж.
 
-ДАННЫЕ:
+ДАННЫЕ (выборка звонков):
 {data}
+
+ВАЖНО: значения lift/correlation — это КАЧЕСТВЕННЫЕ гипотезы по выборке (направление и
+сила сигнала), а не точно измеренные коэффициенты. Не выдавай выдуманные точные числа за
+факт; если уверенности нет — описывай словами (strong/medium/weak).
 
 ЗАДАЧА:
 Найди сигналы, которые предсказывают успешную встречу.
@@ -226,9 +237,10 @@ class ResearchAnalyzer:
         if isinstance(data, list):
             # Create summary
             if len(data) > 100:
-                # Sample if too large
+                # Deterministic sample (fixed seed) so re-runs over the same data
+                # produce the same insights — reproducibility matters for validation.
                 import random
-                sample = random.sample(data, 100)
+                sample = random.Random(1234).sample(data, 100)
                 return f"Sample of {len(data)} items:\n{json.dumps(sample, ensure_ascii=False, default=str)}"
             return json.dumps(data, ensure_ascii=False, default=str)
         return str(data)
@@ -355,10 +367,11 @@ class ResearchAnalyzer:
             logger.warning("LLM unavailable for CustDev extraction")
             return None
 
-        # Limit to avoid token blowout
+        # Limit to avoid token blowout. Deterministic sample for reproducibility.
         sample_size = min(200, len(calls_with_transcripts))
         import random
-        sampled = random.sample(calls_with_transcripts, sample_size) if sample_size < len(calls_with_transcripts) else calls_with_transcripts
+        sampled = (random.Random(1234).sample(calls_with_transcripts, sample_size)
+                   if sample_size < len(calls_with_transcripts) else calls_with_transcripts)
 
         data_str = self._prepare_summary_stats(sampled)
 
@@ -408,6 +421,10 @@ async def run_research_analysis(
         "temporal": None,
         "failure_clusters": None,
         "conversion_signals": None,
+        # CustDev is produced by the dedicated GROUNDED map-reduce path
+        # (pipeline/custdev.py) — per-call extraction with verbatim quotes and
+        # pipeline-computed counts. We deliberately do NOT run the aggregate,
+        # number-fabricating CustDev here; it is kept only for ad-hoc analysis.
         "custdev": None,
     }
 
@@ -425,9 +442,5 @@ async def run_research_analysis(
     # Conversion signals
     logger.info("Running conversion signals analysis...")
     results["conversion_signals"] = await analyzer.conversion_signals(calls)
-
-    # CustDev
-    logger.info("Running CustDev extraction...")
-    results["custdev"] = await analyzer.custdev_extraction(calls, focus=focus)
 
     return results

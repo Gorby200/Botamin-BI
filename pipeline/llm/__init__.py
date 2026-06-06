@@ -21,7 +21,7 @@ from pipeline.llm.analyze import run_analysis
 from pipeline.llm.batch import BatchAnalyzer, BatchResult
 from pipeline.llm.research import ResearchAnalyzer, run_research_analysis
 from pipeline.llm.optimizer import ThresholdOptimizer, optimize_if_needed
-from pipeline.llm.orchestrator import analyze_with_tiers, integrate_with_pipeline
+from pipeline.llm.orchestrator import integrate_with_pipeline, _select_for_llm
 from pipeline.llm.schemas import (
     BatchAnalysisOutput,
     DetailedAnalysisOutput,
@@ -45,8 +45,8 @@ __all__ = [
     "ThresholdOptimizer",
     "optimize_if_needed",
     # Integration
-    "analyze_with_tiers",
     "integrate_with_pipeline",
+    "_select_for_llm",
     # Schemas
     "BatchAnalysisOutput",
     "DetailedAnalysisOutput",

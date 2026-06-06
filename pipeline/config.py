@@ -97,6 +97,13 @@ class Settings:
         default_factory=lambda: _get_float("LLM_TEMPERATURE", 0.2)
     )
     LLM_MAX_TOKENS: int = field(default_factory=lambda: _get_int("LLM_MAX_TOKENS", 4096))
+    # The single-pass analyzer returns a much richer object (stages + ~60 patterns +
+    # V4 quality + product-intel + recommendations), so it needs a larger output budget.
+    LLM_ANALYZE_MAX_TOKENS: int = field(default_factory=lambda: _get_int("LLM_ANALYZE_MAX_TOKENS", 8000))
+    # Dialogues per LLM request. Batching amortizes the heavy system prompt (catalog +
+    # rubric) across N dialogues. Modest by default because each per-dialogue analysis
+    # is large; the runner bisects/retries dialogues that don't come back.
+    LLM_ANALYZE_BATCH_SIZE: int = field(default_factory=lambda: _get_int("LLM_ANALYZE_BATCH_SIZE", 6))
 
     # CustDev research lens (empty -> built-in default in custdev.py).
     CUSTDEV_PROMPT: str = field(default_factory=lambda: _get("CUSTDEV_PROMPT"))

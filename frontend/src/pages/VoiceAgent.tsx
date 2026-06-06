@@ -5,6 +5,7 @@ import { StatCard } from "../components/Stat";
 import Badge from "../components/Badge";
 import { pct } from "../format";
 import { ThumbsUp, ThumbsDown, Wrench } from "lucide-react";
+import type { GapAnalysis } from "../types";
 
 export default function VoiceAgent() {
   const { data, loading } = useDashboardTuned();
@@ -12,7 +13,8 @@ export default function VoiceAgent() {
     return <div className="p-8 space-y-4"><Skeleton h={40} w={320} /><div className="grid grid-cols-3 gap-4"><Skeleton h={120} /><Skeleton h={120} /><Skeleton h={120} /></div></div>;
 
   const { quality, diagnostics, meta } = data;
-  const isDet = meta.llm.mode !== "llm";
+  const isDet = !String(meta.llm.mode || "").startsWith("llm");
+  const gap = data.gap_analysis;
   const negatives = diagnostics.pattern_audit.filter((p) => p.polarity === "negative");
   const positives = diagnostics.pattern_audit.filter((p) => p.polarity === "positive");
 
@@ -44,6 +46,9 @@ export default function VoiceAgent() {
           {quality.metrics.map((m) => <StatCard key={m.id} m={m} />)}
         </div>
       </section>
+
+      {/* V4 quality + gap analysis (LLM judges layers; pipeline computes the numbers) */}
+      {gap && <QualityGapCard g={gap} />}
 
       {/* Recommendations */}
       <Card title="Что подкрутить" subtitle="Авто-рекомендации из метрик и паттернов (детали и приоритет — в Бэклоге)">
@@ -89,13 +94,53 @@ export default function VoiceAgent() {
   );
 }
 
-function PatternRow({ p, bad }: { p: { psy_id: string; name: string; share: number; lift_on_advance: number; impact: string }; bad?: boolean }) {
+function QualityGapCard({ g }: { g: GapAnalysis }) {
+  const gapBand = g.avg_gap > 1.5 ? "band-bad" : g.avg_gap < -1.5 ? "" : "band-good";
+  const gapSign = g.avg_gap >= 0 ? "+" : "";
+  return (
+    <Card
+      title="Качество ведения (V4) и Gap-анализ"
+      subtitle={`Качество слоёв судит LLM, итог/грейд/разрыв считает пайплайн · по ${g.n.toLocaleString("ru-RU")} разговорам`}
+    >
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+        <GapStat label="Качество ведения" value={`${g.avg_quality.toFixed(1)}/10`} hint="как ведёт бот (LLM)" />
+        <GapStat label="Результат (outcome)" value={`${g.avg_outcome.toFixed(1)}/10`} hint="как далеко дошёл клиент" />
+        <GapStat label="Разрыв (gap)" value={`${gapSign}${g.avg_gap.toFixed(1)}`} cls={gapBand} hint="качество − результат" />
+        <GapStat label="Разговоров" value={g.n.toLocaleString("ru-RU")} hint="connected" />
+      </div>
+      <div className="flex flex-wrap items-center gap-1.5 mb-3">
+        {g.grade_distribution.map((gd) => (
+          <Badge key={gd.grade}>{gd.grade}: {gd.count}</Badge>
+        ))}
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3 text-xs">
+        <div className="rounded-md bandbg-bad px-2.5 py-1.5">Узкое место в закрытии/базе: <b className="stat-num">{g.buckets.closing_bottleneck}</b></div>
+        <div className="rounded-md bandbg-ok px-2.5 py-1.5">Тёплая база (доходят «вопреки»): <b className="stat-num">{g.buckets.warm_base}</b></div>
+        <div className="rounded-md bandbg-good px-2.5 py-1.5">Качество = результат: <b className="stat-num">{g.buckets.aligned}</b></div>
+      </div>
+      <p className="text-sm text-[var(--color-ink-secondary)] leading-snug">{g.interpretation}</p>
+    </Card>
+  );
+}
+
+function GapStat({ label, value, hint, cls }: { label: string; value: string; hint?: string; cls?: string }) {
+  return (
+    <div>
+      <div className="text-[11px] uppercase tracking-wide text-[var(--color-ink-muted)]">{label}</div>
+      <div className={`stat-num text-2xl ${cls || "text-[var(--color-ink)]"}`}>{value}</div>
+      {hint && <div className="text-[11px] text-[var(--color-ink-tertiary)]">{hint}</div>}
+    </div>
+  );
+}
+
+function PatternRow({ p, bad }: { p: { psy_id: string; name: string; share: number; lift_on_advance: number; impact: string; category?: string }; bad?: boolean }) {
   return (
     <div className="flex items-center justify-between gap-2 text-sm">
       <div className="flex items-center gap-2 min-w-0">
         {bad ? <ThumbsDown size={13} className="text-[var(--color-band-bad)] shrink-0" /> : <ThumbsUp size={13} className="text-[var(--color-band-good)] shrink-0" />}
         <Badge variant={bad ? "negative" : "positive"}>{p.psy_id}</Badge>
         <span className="truncate text-[var(--color-ink-secondary)]">{p.name}</span>
+        {p.category && <span className="hidden lg:inline text-[10px] text-[var(--color-ink-muted)] shrink-0">· {p.category}</span>}
       </div>
       <div className="flex items-center gap-3 shrink-0">
         <span className="stat-num text-xs text-[var(--color-ink-tertiary)]">{pct(p.share, 0)}</span>

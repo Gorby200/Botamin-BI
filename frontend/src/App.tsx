@@ -1,6 +1,9 @@
-import { BrowserRouter, Routes, Route, NavLink } from "react-router-dom";
+// HashRouter (not BrowserRouter): the app deploys to a GitHub Pages PROJECT subpath
+// (/Botamin-BI/). Hash routing makes deep links + refresh work with zero server config
+// and no 404.html shim — robust for a static dashboard.
+import { HashRouter, Routes, Route, NavLink } from "react-router-dom";
 import {
-  LayoutDashboard, Filter, AudioLines, Activity, Phone, ListChecks, BookOpen, Lightbulb, SlidersHorizontal,
+  LayoutDashboard, Filter, AudioLines, Activity, Phone, ListChecks, BookOpen, Lightbulb, SlidersHorizontal, FileText,
 } from "lucide-react";
 import { lazy, Suspense } from "react";
 import Skeleton from "./components/Skeleton";
@@ -16,6 +19,7 @@ const CallsPage = lazy(() => import("./pages/Calls"));
 const CustDevPage = lazy(() => import("./pages/CustDev"));
 const BacklogPage = lazy(() => import("./pages/Backlog"));
 const Methodology = lazy(() => import("./pages/Methodology"));
+const ReportPage = lazy(() => import("./pages/Report"));
 const SettingsPage = lazy(() => import("./pages/Settings"));
 
 const NAV = [
@@ -26,6 +30,7 @@ const NAV = [
   { to: "/calls", icon: Phone, label: "Звонки", hint: "Просмотр диалогов" },
   { to: "/custdev", icon: Lightbulb, label: "CustDev", hint: "Голос клиента, Tier 3 инсайты" },
   { to: "/backlog", icon: ListChecks, label: "Бэклог", hint: "Гипотезы и A/B" },
+  { to: "/report", icon: FileText, label: "Отчёт клиенту", hint: "Сводка · выгрузка в PDF" },
   { to: "/method", icon: BookOpen, label: "Методика", hint: "Почему так" },
   { to: "/settings", icon: SlidersHorizontal, label: "Настройки", hint: "Конфигурация системы" },
 ];
@@ -36,7 +41,7 @@ function Sidebar({ meta }: { meta: Dashboard | null }) {
       ? `${meta.meta.period_from} — ${meta.meta.period_to}`
       : null;
   return (
-    <nav className="sticky top-0 h-screen w-60 shrink-0 border-r border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-6 flex flex-col gap-1 overflow-y-auto">
+    <nav className="no-print sticky top-0 h-screen w-60 shrink-0 border-r border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-6 flex flex-col gap-1 overflow-y-auto">
       <div className="px-3 mb-5">
         <h1 className="text-lg font-medium" style={{ fontFamily: "var(--font-display)" }}>
           Botamin <span className="text-[var(--color-accent)]">BI</span>
@@ -83,12 +88,12 @@ function Sidebar({ meta }: { meta: Dashboard | null }) {
 export default function App() {
   const { data } = useDashboard();
   return (
-    <BrowserRouter>
+    <HashRouter>
       <div className="flex min-h-screen">
         <Sidebar meta={data} />
         <main className="flex-1 overflow-y-auto">
           {data && (
-            <div className="px-8 pt-6">
+            <div className="no-print px-8 pt-6">
               <AnalysisBanner llm={data.meta.llm} />
             </div>
           )}
@@ -110,12 +115,13 @@ export default function App() {
               <Route path="/calls" element={<CallsPage />} />
               <Route path="/custdev" element={<CustDevPage />} />
               <Route path="/backlog" element={<BacklogPage />} />
+              <Route path="/report" element={<ReportPage />} />
               <Route path="/method" element={<Methodology />} />
               <Route path="/settings" element={<SettingsPage />} />
             </Routes>
           </Suspense>
         </main>
       </div>
-    </BrowserRouter>
+    </HashRouter>
   );
 }

@@ -36,7 +36,7 @@ export interface LLMStatus {
   configured: boolean;
   provider: string;
   scope: string;              // focus | full | sample | off
-  mode: "llm" | "deterministic" | "llm_tiered";
+  mode: "llm_single_pass" | "deterministic" | "llm" | "llm_tiered";
   calls_analyzed: number;
   calls_selected: number;
   available: boolean;
@@ -95,6 +95,7 @@ export interface PatternAudit {
   polarity: "positive" | "negative";
   impact: string;
   prompt_block: string;
+  category?: string;
   weight: number;
   share: number;
   count: number;
@@ -126,6 +127,33 @@ export interface LossAttribution {
   by_reason: { reason: string; label: string; count: number }[];
 }
 
+// ── V4 quality (bot-adapted): LLM judges layers, Python computes total/grade/outcome/gap ──
+export interface QualityScore {
+  macro: number; micro: number; overlap: number;
+  total: number; grade: string; grade_name: string;
+  breakdown: { macro_contribution: number; micro_contribution: number; overlap_contribution: number };
+  outcome: number;
+  gap: { gap: number; efficiency_ratio: number; interpretation: string };
+}
+
+export interface GapAnalysis {
+  n: number;
+  avg_quality: number;
+  avg_outcome: number;
+  avg_gap: number;
+  grade_distribution: { grade: string; count: number }[];
+  buckets: { closing_bottleneck: number; warm_base: number; aligned: number };
+  interpretation: string;
+}
+
+export interface ProductIntelInsight {
+  category: string; insight: string; quote: string; recommendation: string;
+}
+export interface ProductIntel {
+  insights: ProductIntelInsight[];
+  jtbd: { functional: string; emotional: string; trigger: string };
+}
+
 export interface Dashboard {
   meta: DashboardMeta;
   reach: { dials: number; engaged: number; metrics: Metric[] };
@@ -139,6 +167,7 @@ export interface Dashboard {
     driver_id: string; label: string; stage_from: string; stage_to: string;
     conversion: number; dropped_abs: number; prompt_block: string; rationale: string;
   };
+  gap_analysis?: GapAnalysis | null;
   outcomes: { outcome: string; key: string; count: number; score: number }[];
   time_heatmap: { dow: number; hour: number; calls: number; advanced: number }[];
   duration_distribution: { bucket_sec: string; count: number }[];
@@ -219,8 +248,11 @@ export interface CallDetail {
     asr_breakdown: boolean; asr_severity: string; responsiveness: number;
     repair_attempts: number; bot_talk_share: number; longest_bot_monologue_words: number;
   };
-  detected_patterns: { id: string; polarity: string; quote: string }[];
-  objections: { type: string; quote: string }[];
+  detected_patterns: { id: string; polarity: string; quote: string; name?: string }[];
+  objections: { type: string; quote: string; root_cause?: string }[];
+  quality?: QualityScore;
+  product_intel?: ProductIntel;
+  recommendations?: string[];
   transcript: { role: "bot" | "client" | "unknown"; text: string }[];
 }
 

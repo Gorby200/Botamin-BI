@@ -19,3 +19,6 @@ frontend/public/data/*.json
 
 # LLM analysis cache
 .llm_cache/
+
+# TS build cache
+frontend/tsconfig.tsbuildinfo

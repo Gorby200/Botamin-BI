@@ -1,352 +1,103 @@
-"""Three-tier LLM orchestrator for Botamin BI pipeline.
+"""Single-pass LLM integration point for the pipeline.
 
-This module integrates the three LLM analysis tiers:
-- Tier 1: Batch rapid screening (40-50 calls per request)
-- Tier 2: Targeted deep dive (flagged calls only)
-- Tier 3: Aggregated research insights
+Replaces the former three-tier orchestrator. The pipeline now makes exactly ONE LLM
+call per selected dialogue (pipeline/llm/analyze.py), cached on disk. The Tier-1 batch
+screen and the transcript-re-reading Tier-3 are gone: everything the LLM judges
+(stages, patterns, V4 quality layers, product-intel) comes from that single pass, and
+ALL numbers (funnel, rates, distributions, frequencies, quality total/grade/outcome/gap)
+are computed deterministically downstream.
 
-DESIGN:
-  1. Fail-safe: falls back to deterministic if LLM unavailable
-  2. Cache-friendly: respects existing cache from analyze.py
-  3. Progress tracking: logs progress for large batches
-  4. Result merging: combines all tiers into unified output
-
-USAGE:
-    from pipeline.llm.orchestrator import analyze_with_tiers
-    results = await analyze_with_tiers(calls, client)
+The deterministic classifier (pipeline/stages.py) remains the failsafe: non-selected
+calls and any call the LLM could not parse keep their deterministic analysis. Both
+engines emit the SAME contract, so metrics.py is source-agnostic.
 """
 from __future__ import annotations
 
-import asyncio
 import logging
-from datetime import datetime
-from typing import Optional
 
 from pipeline.config import settings
 from pipeline.llm.client import get_client
-from pipeline.llm.batch import BatchAnalyzer, BatchResult
 from pipeline.llm.analyze import run_analysis
-from pipeline.llm.research import ResearchAnalyzer, run_research_analysis
-from pipeline.llm.schemas import DetailedAnalysisOutput, unified_from_batch
 
 logger = logging.getLogger(__name__)
 
 
-async def analyze_with_tiers(
-    calls: list[dict],
-    use_tier3: bool = True,
-    model: str = ""
-) -> dict:
-    """Run complete three-tier LLM analysis on calls.
+def _select_for_llm(features: list[dict], scope: str) -> list[int]:
+    """Return indices of calls to send to the LLM under the given scope.
 
-    Args:
-        calls: List of call dicts with "id", "turns", "duration_sec"
-        use_tier3: Whether to run Tier 3 research analysis
-        model: Optional model override
-
-    Returns:
-        Dict with:
-        - tier1: Batch results for all calls
-        - tier2: Detailed results for flagged calls
-        - tier3: Research insights (if use_tier3)
-        - merged: Unified results compatible with metrics.py
+    - off:    none
+    - full:   every connected call
+    - sample: deterministic every-k-th connected call (reproducible, no RNG)
+    - focus:  connected substantive dialogues only (>= MIN_CLIENT_TURNS client turns)
     """
-    client = get_client()
-    if not client.available:
-        logger.warning("LLM unavailable, falling back to deterministic only")
-        return {
-            "status": "fallback",
-            "tier1": None,
-            "tier2": None,
-            "tier3": None,
-            "merged": {},
-            "note": "LLM unavailable - using deterministic classification"
-        }
+    if scope == "off":
+        return []
+    connected = [i for i, f in enumerate(features)
+                 if f.get("analysis", {}).get("connected", False)]
+    if scope == "full":
+        return connected
+    if scope == "sample":
+        k = max(1, len(connected) // max(settings.LLM_SAMPLE_SIZE, 1))
+        return connected[::k][: settings.LLM_SAMPLE_SIZE]
+    # focus (default)
+    return [i for i in connected
+            if features[i].get("client_turns", 0) >= settings.MIN_CLIENT_TURNS]
 
-    start_time = datetime.now()
-    results = {
-        "started_at": start_time.isoformat(),
-        "total_calls": len(calls),
-        "tier1": None,
-        "tier2": None,
-        "tier3": None,
-        "merged": {}
-    }
-
-    # ── Tier 1: Batch Screening ────────────────────────────────────────────────
-    logger.info("=" * 60)
-    logger.info("TIER 1: Batch Analysis")
-    logger.info("=" * 60)
-
-    batcher = BatchAnalyzer(client, batch_size=settings.LLM_BATCH_SIZE if hasattr(settings, 'LLM_BATCH_SIZE') else 50)
-    tier1_results = await batcher.analyze_all(calls, model)
-    results["tier1"] = {k: v.to_dict() if hasattr(v, 'to_dict') else v for k, v in tier1_results.items()}
-
-    successful_tier1 = sum(1 for r in tier1_results.values() if r.success)
-    logger.info("Tier 1 complete: %d/%d successful", successful_tier1, len(tier1_results))
-
-    # Convert to unified format for pipeline compatibility
-    unified_tier1 = {}
-    for call_id, batch_res in tier1_results.items():
-        try:
-            unified_tier1[call_id] = unified_from_batch(batch_res)
-        except Exception as e:
-            logger.warning("Failed to convert %s to unified: %s", call_id, e)
-
-    results["merged"] = unified_tier1
-
-    # ── Tier 2: Detailed Deep Dive ────────────────────────────────────────────
-    flagged = [
-        c for c in calls
-        if tier1_results.get(c.get("id", ""), BatchResult(c.get("id", ""), -1, [], [], False, 0.0)).flag
-    ]
-
-    if flagged:
-        logger.info("=" * 60)
-        logger.info("TIER 2: Detailed Analysis (%d flagged calls)", len(flagged))
-        logger.info("=" * 60)
-
-        # Reuse existing run_analysis for compatibility
-        tier2_payload = [{"id": c["id"], "turns": c["turns"]} for c in flagged]
-        tier2_results = run_analysis(tier2_payload, model)
-
-        # Merge tier2 results into unified output
-        for call_id, detailed in tier2_results.items():
-            if call_id in results["merged"]:
-                results["merged"][call_id] = detailed  # Override with detailed
-
-        results["tier2"] = tier2_results
-        logger.info("Tier 2 complete: %d detailed analyses", len(tier2_results))
-    else:
-        logger.info("Tier 2 skipped: no calls flagged")
-        results["tier2"] = {}
-
-    # ── Tier 3: Research Insights ──────────────────────────────────────────────
-    if use_tier3 and len(calls) >= 100:  # Minimum sample size
-        logger.info("=" * 60)
-        logger.info("TIER 3: Research Analysis")
-        logger.info("=" * 60)
-
-        try:
-            # Prepare data for tier3
-            calls_by_hour = _prepare_temporal_data(calls)
-
-            research_results = await run_research_analysis(
-                client,
-                calls,
-                calls_by_hour=calls_by_hour,
-                focus=getattr(settings, 'CUSTDEV_PROMPT', None) or ""
-            )
-
-            results["tier3"] = research_results
-            logger.info("Tier 3 complete: temporal=%s, failures=%s, custdev=%s",
-                       bool(research_results.get("temporal")),
-                       bool(research_results.get("failure_clusters")),
-                       bool(research_results.get("custdev")))
-
-        except Exception as e:
-            logger.warning("Tier 3 analysis failed: %s", e)
-            results["tier3"] = {"error": str(e)}
-    else:
-        results["tier3"] = None
-
-    # ── Summary ───────────────────────────────────────────────────────────────
-    elapsed = (datetime.now() - start_time).total_seconds()
-    results["completed_at"] = datetime.now().isoformat()
-    results["elapsed_seconds"] = elapsed
-
-    logger.info("=" * 60)
-    logger.info("THREE-TIER ANALYSIS COMPLETE")
-    logger.info("=" * 60)
-    logger.info("Total time: %.1fs", elapsed)
-    logger.info("Tier 1: %d calls screened", len(tier1_results))
-    logger.info("Tier 2: %d calls analyzed in detail", len(results.get("tier2", {})))
-    logger.info("Tier 3: %s", "complete" if results.get("tier3") else "skipped")
-
-    return results
-
-
-def _prepare_temporal_data(calls: list[dict]) -> dict:
-    """Prepare calls grouped by hour for temporal analysis."""
-    from collections import defaultdict
-
-    by_hour = defaultdict(lambda: {
-        "count": 0,
-        "connected": 0,
-        "meetings": 0,
-        "total_duration": 0,
-        "quality_sum": 0
-    })
-
-    for call in calls:
-        # Try to extract hour from datetime if available
-        dt = call.get("datetime", "")
-        hour = "unknown"
-        if dt:
-            try:
-                import pandas as pd
-                dt_parsed = pd.to_datetime(dt, errors="coerce")
-                if not pd.isna(dt_parsed):
-                    hour = int(dt_parsed.hour)
-            except Exception:
-                pass
-
-        bucket = by_hour[hour]
-        bucket["count"] += 1
-
-        outcome = call.get("outcome", "")
-        if outcome not in ("no_contact", "contact_only"):
-            bucket["connected"] += 1
-        if outcome == "meeting":
-            bucket["meetings"] += 1
-
-        bucket["total_duration"] += call.get("duration_sec", 0)
-        # Use confidence or quality_score if available
-        quality = call.get("quality_score", call.get("confidence", 0.5))
-        bucket["quality_sum"] += quality
-
-    # Convert to summary dict
-    return {
-        str(h): {
-            "count": data["count"],
-            "connect_rate": data["connected"] / data["count"] if data["count"] else 0,
-            "meeting_rate": data["meetings"] / data["count"] if data["count"] else 0,
-            "avg_duration": data["total_duration"] / data["count"] if data["count"] else 0,
-            "avg_quality": data["quality_sum"] / data["count"] if data["count"] else 0
-        }
-    for h, data in by_hour.items()
-    }
-
-
-# ── Pipeline Integration ─────────────────────────────────────────────────────
 
 def integrate_with_pipeline(
     features: list[dict],
-    llm_scope: str = "focus"
+    llm_scope: str = "focus",
 ) -> tuple[list[dict], dict]:
-    """Integration point for build.py pipeline.
+    """Run the single LLM pass over the selected scope and merge results into features.
 
-    This replaces the LLM section in run_pipeline().
-
-    Args:
-        features: List of extracted features from _extract_features
-        llm_scope: Scope for analysis ("focus", "full", "sample", "off")
-
-    Returns:
-        (features_with_llm, llm_status)
+    Returns (features_with_llm, llm_status). Non-selected calls keep deterministic
+    analysis; selected calls that the LLM parsed are replaced with the richer contract.
     """
-    import asyncio
-    from pipeline.config import settings
-
     llm_status = {
         "configured": settings.llm_configured,
         "provider": settings.primary_provider,
         "scope": llm_scope,
-        "mode": "deterministic",
-        "calls_analyzed": 0,
-        "calls_selected": 0,
+        "mode": "deterministic",          # -> "llm_single_pass" when the LLM runs
         "available": False,
+        "calls_selected": 0,
+        "calls_analyzed": 0,
         "note": "",
-        "tier1_analyzed": 0,
-        "tier2_analyzed": 0,
-        "tier3_run": False
     }
 
     if llm_scope == "off":
-        llm_status["note"] = "LLM disabled (scope=off)"
+        llm_status["note"] = "LLM отключён (scope=off) — детерминированный анализ."
         return features, llm_status
 
     client = get_client()
     if not client.available:
-        llm_status["note"] = "LLM provider unavailable - using deterministic"
+        llm_status["note"] = "LLM-провайдер недоступен — детерминированный анализ."
         return features, llm_status
 
     llm_status["available"] = True
-
-    # FILTER: Select only relevant calls for LLM analysis
-    # This is the KEY optimization - we don't send all 11k calls!
-    selected_indices = _select_for_llm(features, llm_scope)
-
-    if not selected_indices:
-        logger.info("No calls selected for LLM analysis under scope '%s'", llm_scope)
-        llm_status["note"] = f"No calls matched scope '{llm_scope}' criteria"
+    selected = _select_for_llm(features, llm_scope)
+    if not selected:
+        llm_status["note"] = f"Под scope '{llm_scope}' не выбрано ни одного звонка."
         return features, llm_status
 
-    logger.info("LLM scope '%s': %d/%d calls selected for analysis",
-                llm_scope, len(selected_indices), len(features))
+    logger.info("LLM single pass: %d/%d calls selected (scope=%s)",
+                len(selected), len(features), llm_scope)
+    calls = [{"id": f"c_{i:05d}", "turns": features[i]["turns"]} for i in selected]
 
-    # Prepare ONLY selected calls for analysis
-    calls = [
-        {
-            "id": f"c_{i:05d}",
-            "turns": features[i]["turns"],
-            "duration_sec": features[i].get("duration_sec", 0),
-            "datetime": features[i].get("datetime", ""),
-            "outcome": features[i].get("analysis", {}).get("outcome", ""),
-            "index": i  # Track original index for merging back
-        }
-    for i in selected_indices
-    ]
-
-    # Run three-tier analysis
     try:
-        results = asyncio.run(analyze_with_tiers(calls))
+        results = run_analysis(calls)
+    except Exception as e:  # pragma: no cover
+        logger.error("Single-pass LLM analysis failed: %s", e)
+        llm_status["note"] = f"LLM-анализ упал: {e}. Использован детерминированный."
+        return features, llm_status
 
-        # Update status
-        llm_status["mode"] = "llm_tiered"
-        llm_status["calls_analyzed"] = len(results.get("merged", {}))
-        llm_status["calls_selected"] = len(calls)
-        llm_status["tier1_analyzed"] = len(results.get("tier1", {}))
-        llm_status["tier2_analyzed"] = len(results.get("tier2", {}))
-        llm_status["tier3_run"] = bool(results.get("tier3"))
+    for i in selected:
+        cid = f"c_{i:05d}"
+        if cid in results:
+            features[i]["analysis"] = results[cid]
 
-        # Merge results back into features (using original index)
-        for call in calls:
-            call_id = call["id"]
-            original_idx = call["index"]
-            if call_id in results.get("merged", {}):
-                features[original_idx]["analysis"] = results["merged"][call_id]
-
-        llm_status["tier3_results"] = results.get("tier3")
-
-    except Exception as e:
-        logger.error("Three-tier analysis failed: %s", e)
-        llm_status["note"] = f"LLM analysis failed: {str(e)}"
-        llm_status["mode"] = "deterministic"
-
+    llm_status["mode"] = "llm_single_pass"
+    llm_status["calls_selected"] = len(selected)
+    llm_status["calls_analyzed"] = len(results)
+    if not results:
+        llm_status["note"] = "LLM не вернул ни одного результата — детерминированный фолбэк."
     return features, llm_status
-
-
-def _select_for_llm(features: list[dict], scope: str) -> list[int]:
-    """Filter and return indices of calls that should be analyzed by LLM.
-
-    This is the CRITICAL filtering logic that prevents sending 11k calls!
-    - focus: only substantive dialogues (3+ client turns)
-    - full: all connected calls
-    - sample: random sample for testing
-    - off: none
-
-    Returns:
-        List of indices into features array
-    """
-    idxs = []
-
-    if scope == "off":
-        return idxs
-
-    # Get connected calls only (no point analyzing failed calls)
-    connected = [i for i, f in enumerate(features)
-                if f.get("analysis", {}).get("connected", False)]
-
-    if scope == "full":
-        return connected
-
-    if scope == "sample":
-        # Deterministic sample: every k-th call
-        k = max(1, len(connected) // max(settings.LLM_SAMPLE_SIZE, 1))
-        return connected[::k][:settings.LLM_SAMPLE_SIZE]
-
-    # focus (default): substantive dialogues only
-    min_turns = settings.MIN_CLIENT_TURNS
-    return [i for i in connected
-            if features[i].get("client_turns", 0) >= min_turns]

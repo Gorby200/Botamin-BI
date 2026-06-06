@@ -7,6 +7,7 @@ import {
 import Card from "../components/Card";
 import Skeleton from "../components/Skeleton";
 import DataSourceModal from "../components/DataSourceModal";
+import ScopeSelector from "../components/ScopeSelector";
 import { fmtValue, bandText } from "../format";
 import type { Dashboard, Metric, ThresholdDef, Fmt } from "../types";
 import { Wand2, RefreshCw, RotateCcw, Check, Database, Brain, Upload, FileSpreadsheet, Globe, Plus } from "lucide-react";
@@ -40,6 +41,17 @@ export default function Settings() {
   const overrides = useOverrides();
   const [draft, setDraft] = useState<Overrides>(() => ({ ...overrides }));
   const [showDataModal, setShowDataModal] = useState(false);
+  // Chosen analysis scope. Data is precomputed, so this is the scope to APPLY on the
+  // next pipeline run; we persist the choice and show the exact command.
+  const [scopePref, setScopePref] = useState<string>(() => {
+    try { return localStorage.getItem("botamin.scope_pref") || ""; } catch { return ""; }
+  });
+  const dataScope = data?.meta.llm?.scope || "focus";
+  const chosenScope = scopePref || dataScope;
+  const changeScope = (v: string) => {
+    setScopePref(v);
+    try { localStorage.setItem("botamin.scope_pref", v); } catch { /* ignore */ }
+  };
 
   const defs = data?.thresholds_defaults ?? [];
   const current = useMemo(() => (data ? currentValues(data) : {}), [data]);
@@ -166,70 +178,37 @@ export default function Settings() {
         icon={<Brain size={16} className="text-[var(--color-accent)]" />}
       >
         <div className="space-y-3">
-          <div className="rounded-md bg-[var(--color-bg-card-hover)] p-3">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-[var(--color-ink)]">Провайдер</span>
-              <span className="text-sm text-[var(--color-ink-secondary)]">
-                {data?.meta.llm?.provider === "zhipu" ? "Zhipu GLM" :
-                 data?.meta.llm?.provider === "anthropic" ? "Anthropic Claude" :
-                 "Не настроен"}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-[var(--color-ink)]">Глубина анализа</span>
-              <span className="text-sm text-[var(--color-ink-secondary)]">
-                {data?.meta.llm?.scope === "focus" ? "Focus (содержательные)" :
-                 data?.meta.llm?.scope === "full" ? "Full (все звонки)" :
-                 data?.meta.llm?.scope === "sample" ? "Sample (выборка)" :
-                 data?.meta.llm?.scope === "off" ? "Off (детерминированный)" :
-                 "Unknown"}
-              </span>
-            </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-[var(--color-ink)]">Провайдер</span>
+            <span className="text-sm text-[var(--color-ink-secondary)]">
+              {data?.meta.llm?.provider === "zhipu" ? "Zhipu GLM" :
+               data?.meta.llm?.provider === "anthropic" ? "Anthropic Claude" :
+               "Не настроен"}
+            </span>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              className={`px-3 py-2 rounded-md text-sm transition ${
-                data?.meta.llm?.scope === "focus"
-                  ? "bg-[var(--color-accent)] text-white"
-                  : "bg-[var(--color-bg-card-hover)] text-[var(--color-ink-secondary)] hover:bg-[var(--color-border)]"
-              }`}
-            >
-              Focus
-            </button>
-            <button
-              className={`px-3 py-2 rounded-md text-sm transition ${
-                data?.meta.llm?.scope === "full"
-                  ? "bg-[var(--color-accent)] text-white"
-                  : "bg-[var(--color-bg-card-hover)] text-[var(--color-ink-secondary)] hover:bg-[var(--color-border)]"
-              }`}
-            >
-              Full
-            </button>
-            <button
-              className={`px-3 py-2 rounded-md text-sm transition ${
-                data?.meta.llm?.scope === "sample"
-                  ? "bg-[var(--color-accent)] text-white"
-                  : "bg-[var(--color-bg-card-hover)] text-[var(--color-ink-secondary)] hover:bg-[var(--color-border)]"
-              }`}
-            >
-              Sample
-            </button>
-            <button
-              className={`px-3 py-2 rounded-md text-sm transition ${
-                data?.meta.llm?.scope === "off"
-                  ? "bg-[var(--color-accent)] text-white"
-                  : "bg-[var(--color-bg-card-hover)] text-[var(--color-ink-secondary)] hover:bg-[var(--color-border)]"
-              }`}
-            >
-              Off
-            </button>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-sm font-medium text-[var(--color-ink)]">Глубина анализа</span>
+            <ScopeSelector active={chosenScope} onChange={changeScope} size="md" />
           </div>
 
-          <p className="text-xs text-[var(--color-ink-muted)]">
-            Для изменения scope запустите пайплайн с флагом <code className="text-[var(--color-accent)]">--llm-scope</code>.
-            Текущая настройка влияет на стоимость и время анализа.
-          </p>
+          {chosenScope !== dataScope ? (
+            <div className="rounded-md bandbg-ok px-3 py-2 text-xs text-[var(--color-ink-secondary)]">
+              Текущие данные собраны в режиме <b>{dataScope}</b>. Вы выбрали <b>{chosenScope}</b> — чтобы применить,
+              перезапустите пайплайн с этим охватом:
+              <code className="mt-1.5 block rounded bg-[var(--color-bg-card)] px-2 py-1 text-[var(--color-accent)]">
+                python -m pipeline --file data/raw.csv --llm-scope {chosenScope}
+              </code>
+              <span className="mt-1 block text-[var(--color-ink-muted)]">
+                или в GitHub Actions: Run workflow → llm_scope = {chosenScope}.
+              </span>
+            </div>
+          ) : (
+            <p className="text-xs text-[var(--color-ink-muted)]">
+              Данные собраны в этом охвате. Охват влияет на стоимость и время анализа; применяется при запуске
+              пайплайна (флаг <code className="text-[var(--color-accent)]">--llm-scope</code> или GitHub Actions).
+            </p>
+          )}
         </div>
       </Card>
 

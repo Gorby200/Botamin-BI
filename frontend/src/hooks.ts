@@ -4,13 +4,19 @@ import { useOverrides, applyThresholds } from "./thresholds";
 
 const BASE = import.meta.env.BASE_URL || "/";
 
+// Pipeline-generated JSON is regenerated on every build/run, so the browser must
+// REVALIDATE rather than serve a stale cached copy (a returning user would otherwise
+// see old numbers after a new run). `no-cache` = conditional GET (cheap 304 when
+// unchanged), NOT `no-store` (which would disable caching entirely).
+const NOCACHE: RequestInit = { cache: "no-cache" };
+
 export function useDashboard() {
   const [data, setData] = useState<Dashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`${BASE}data/dashboard.json`)
+    fetch(`${BASE}data/dashboard.json`, NOCACHE)
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();
@@ -39,7 +45,7 @@ export function useBacklog() {
   const [data, setData] = useState<BacklogItem[]>([]);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
-    fetch(`${BASE}data/backlog.json`)
+    fetch(`${BASE}data/backlog.json`, NOCACHE)
       .then((r) => r.json())
       .then(setData)
       .catch(() => setData([]))
@@ -52,7 +58,7 @@ export function useCallIndex() {
   const [data, setData] = useState<CallIndex[]>([]);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
-    fetch(`${BASE}data/calls/index.json`)
+    fetch(`${BASE}data/calls/index.json`, NOCACHE)
       .then((r) => r.json())
       .then(setData)
       .catch(() => setData([]))
@@ -65,7 +71,7 @@ export function useCustDev() {
   const [data, setData] = useState<CustDev | null>(null);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
-    fetch(`${BASE}data/custdev.json`)
+    fetch(`${BASE}data/custdev.json`, NOCACHE)
       .then((r) => r.json())
       .then(setData)
       .catch(() => setData(null))
@@ -104,7 +110,7 @@ async function ensureIndexLoaded(): Promise<CallIndex[] | null> {
     return indexCache;
   }
   try {
-    const r = await fetch(`${BASE}data/calls/index.json`);
+    const r = await fetch(`${BASE}data/calls/index.json`, NOCACHE);
     if (r.ok) {
       indexCache = await r.json();
       indexCacheTime = now;
@@ -149,7 +155,7 @@ export function useCallDetail(id: string | null, pageHint?: string) {
           }
         }
         // Fetch page
-        const pageR = await fetch(`${BASE}data/calls/${pageId}.json`);
+        const pageR = await fetch(`${BASE}data/calls/${pageId}.json`, NOCACHE);
         if (pageR.ok) {
           const page: CallDetail[] = await pageR.json();
           cachePage(pageId, page);
@@ -180,7 +186,7 @@ export function useCallDetail(id: string | null, pageHint?: string) {
             }
           }
 
-          const pageR = await fetch(`${BASE}data/calls/${entry.page}.json`);
+          const pageR = await fetch(`${BASE}data/calls/${entry.page}.json`, NOCACHE);
           if (pageR.ok) {
             const page: CallDetail[] = await pageR.json();
             cachePage(entry.page, page);
@@ -195,7 +201,7 @@ export function useCallDetail(id: string | null, pageHint?: string) {
       }
 
       // Last resort: old individual file format
-      const r = await fetch(`${BASE}data/calls/${id}.json`);
+      const r = await fetch(`${BASE}data/calls/${id}.json`, NOCACHE);
       if (r.ok) {
         setData(await r.json());
       }
@@ -229,7 +235,7 @@ export function useResearch() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`${BASE}data/research.json`)
+    fetch(`${BASE}data/research.json`, NOCACHE)
       .then((r) => {
         if (!r.ok) {
           // Research.json is optional - 404 is OK

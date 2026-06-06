@@ -3,7 +3,7 @@ import Card from "../components/Card";
 import Skeleton from "../components/Skeleton";
 import { StatCard, StatRow } from "../components/Stat";
 import { fmtValue, pct } from "../format";
-import { Target, PhoneCall, TrendingDown } from "lucide-react";
+import { Target, PhoneCall, Filter, ArrowRight } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
 } from "recharts";
@@ -34,6 +34,14 @@ export default function Overview() {
 
   const funnelData = funnel.map((f) => ({ name: f.label, stage: f.stage, count: f.count }));
   const ctxShare = loss.context_share;
+
+  // Step-to-step conversions with HUMAN stage names (S0→S4 codes are cryptic on their own).
+  const transitions = funnel.slice(1).map((f, i) => ({
+    fromStage: funnel[i].stage, toStage: f.stage,
+    from: funnel[i].label, to: f.label,
+    conv: f.conversion_from_prev, dropped: f.dropped_abs,
+    isBottleneck: f.stage === bottleneck.stage_to && funnel[i].stage === bottleneck.stage_from,
+  }));
 
   return (
     <div className="p-8 pt-5 space-y-7 max-w-[1280px]">
@@ -87,10 +95,39 @@ export default function Overview() {
 
       {/* Reach */}
       <section>
-        <SectionLabel icon={<PhoneCall size={14} />} title="Дозвон и вовлечение" hint="Контекстный слой: качество базы и связи, НЕ промпт" />
+        <SectionLabel icon={<PhoneCall size={15} />} title="Дозвон и вовлечение" hint="контекстный слой: качество базы и связи, не промпт" />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {reach.metrics.map((m) => <StatCard key={m.id} m={m} />)}
         </div>
+      </section>
+
+      {/* Conversion steps (controllable) — human stage names + bottleneck highlight */}
+      <section>
+        <SectionLabel icon={<Filter size={15} />} title="Конверсия по шагам воронки" hint="управляемое промптом: где разговор рвётся" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {transitions.map((t) => (
+            <div key={t.toStage}
+              className={`rounded-[var(--radius-xl)] border p-3.5 ${t.isBottleneck ? "border-[var(--color-band-bad)]/40 bandbg-bad" : "border-[var(--color-border)] bg-[var(--color-bg-card)]"}`}>
+              <div className="flex items-center gap-1 text-[13px] font-medium text-[var(--color-ink)]">
+                {t.from} <ArrowRight size={12} className="text-[var(--color-ink-muted)]" /> {t.to}
+              </div>
+              <div className="text-[10px] text-[var(--color-ink-muted)] stat-num">{t.fromStage}→{t.toStage}</div>
+              <div className="mt-1.5 flex items-end gap-2">
+                <span className={`stat-num text-2xl leading-none ${t.isBottleneck ? "band-bad" : "text-[var(--color-ink)]"}`}>{pct(t.conv, 0)}</span>
+                {t.isBottleneck && <span className="mb-0.5 rounded-full bg-[var(--color-band-bad)] px-1.5 py-0.5 text-[9px] font-medium text-white uppercase tracking-wide">узкое место</span>}
+              </div>
+              <div className="mt-0.5 text-[11px] text-[var(--color-ink-tertiary)]">−{t.dropped.toLocaleString("ru-RU")} клиентов</div>
+            </div>
+          ))}
+        </div>
+        <p className="mt-2.5 text-sm text-[var(--color-ink-secondary)]">
+          <b>Фокус — «{bottleneck.label.split("·").pop()?.trim() || bottleneck.label}»:</b> здесь самый большой
+          абсолютный отвал ({bottleneck.dropped_abs.toLocaleString("ru-RU")} чел.), поэтому приоритет — блок
+          промпта «{bottleneck.prompt_block}». {bottleneck.rationale}
+        </p>
+        <p className="mt-2 text-[11px] text-[var(--color-ink-muted)]">
+          Расшифровка стадий: <b>S0</b> Контакт · <b>S1</b> Согласие · <b>S2</b> Оффер донесён · <b>S3</b> Встреча · <b>S4</b> Квалификация
+        </p>
       </section>
 
       {/* Loss attribution + funnel */}
@@ -137,22 +174,6 @@ export default function Overview() {
         </Card>
       </section>
 
-      {/* Bottleneck callout */}
-      <section className="rounded-[var(--radius-xl)] border border-[var(--color-band-bad)]/25 bandbg-bad p-5">
-        <div className="flex items-start gap-3">
-          <TrendingDown size={20} className="mt-0.5 shrink-0" />
-          <div>
-            <h3 className="text-base font-medium" style={{ fontFamily: "var(--font-display)" }}>
-              Узкое место: {bottleneck.label} — {pct(bottleneck.conversion)}
-            </h3>
-            <p className="mt-1 text-sm text-[var(--color-ink-secondary)]">
-              Здесь теряется больше всего клиентов: {bottleneck.dropped_abs.toLocaleString("ru-RU")} чел.
-              Блок промпта: <b>{bottleneck.prompt_block}</b>. {bottleneck.rationale}
-            </p>
-          </div>
-        </div>
-      </section>
-
       {/* Guardrails */}
       <section>
         <Card title="Guardrails" subtitle="Метрики-ограничители: что нельзя сломать, двигая конверсию">
@@ -165,9 +186,9 @@ export default function Overview() {
 
 function SectionLabel({ icon, title, hint }: { icon: React.ReactNode; title: string; hint: string }) {
   return (
-    <div className="mb-3 flex items-center gap-2">
-      <span className="text-[var(--color-accent)]">{icon}</span>
-      <h2 className="text-sm font-medium uppercase tracking-wider text-[var(--color-ink-secondary)]">{title}</h2>
+    <div className="mb-3 flex items-baseline gap-2">
+      <span className="self-center text-[var(--color-accent)]">{icon}</span>
+      <h2 className="text-base font-medium text-[var(--color-ink)]" style={{ fontFamily: "var(--font-display)" }}>{title}</h2>
       <span className="text-xs text-[var(--color-ink-muted)]">· {hint}</span>
     </div>
   );

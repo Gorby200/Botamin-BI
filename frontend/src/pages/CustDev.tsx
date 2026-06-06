@@ -100,7 +100,9 @@ export default function CustDev() {
       </div>
 
       {/* What we heard (summary) */}
-      <Card title="Что мы важное услышали" subtitle={`По ${data.total_conversations.toLocaleString("ru-RU")} реальным разговорам`}>
+      <Card title="Что мы важное услышали" subtitle={isLLM
+        ? `По ${data.total_conversations.toLocaleString("ru-RU")} звонкам, разобранным LLM (содержательная выборка)`
+        : `По ${data.total_conversations.toLocaleString("ru-RU")} состоявшимся разговорам (детерминированно)`}>
         <div className="space-y-2.5">
           {data.summary.map((s, i) => (
             <div key={i} className="flex items-start gap-2.5">
@@ -130,12 +132,12 @@ export default function CustDev() {
               icon={<Clock size={16} className="text-[var(--color-secondary)]" />}
             >
               <div className="space-y-2">
-                {research.temporal.patterns.slice(0, 3).map((p: any, i: number) => (
+                {(research.temporal?.patterns ?? []).slice(0, 3).map((p: any, i: number) => (
                   <div key={i} className="rounded-md bg-[var(--color-bg-card-hover)] p-2 text-xs">
                     <div className="flex justify-between items-center mb-1">
                       <span className="font-medium">{p.time_window}</span>
                       <Badge className="bandbg-good">
-                        {(p.metrics.meeting_rate * 100).toFixed(0)}% встреч
+                        {((p.metrics?.meeting_rate ?? 0) * 100).toFixed(0)}% встреч
                       </Badge>
                     </div>
                     <p className="text-[var(--color-ink-tertiary)]">{p.characteristics}</p>
@@ -154,12 +156,12 @@ export default function CustDev() {
               icon={<AlertTriangle size={16} className="text-[var(--color-warning)]" />}
             >
               <div className="space-y-2">
-                {research.failure_clusters.clusters.slice(0, 3).map((cluster: any, i: number) => (
+                {(research.failure_clusters?.clusters ?? []).slice(0, 3).map((cluster: any, i: number) => (
                   <div key={i} className="rounded-md bg-[var(--color-warning-subtle)] p-2 text-xs">
                     <div className="flex justify-between items-center mb-1">
                       <span className="font-medium">{cluster.name}</span>
                       <Badge className="bandbg-warning">
-                        {(cluster.pct_of_failed * 100).toFixed(0)}%
+                        {((cluster.pct_of_failed ?? 0) * 100).toFixed(0)}%
                       </Badge>
                     </div>
                     <p className="text-[var(--color-ink-tertiary)]">{cluster.characteristics}</p>
@@ -180,19 +182,19 @@ export default function CustDev() {
               <div className="grid grid-cols-2 gap-2">
                 <div className="rounded-md bg-[var(--color-success-subtle)] p-2">
                   <p className="text-[11px] text-[var(--color-ink-muted)] mb-1">Сильные сигналы</p>
-                  {research.conversion_signals.strong_signals.slice(0, 2).map((s: any, i: number) => (
+                  {(research.conversion_signals?.strong_signals ?? []).slice(0, 2).map((s: any, i: number) => (
                     <div key={i} className="text-xs mb-1">
                       <span className="font-medium">• {s.signal}</span>
-                      <span className="text-[var(--color-success)] ml-1">{s.lift}</span>
+                      <span className="text-[var(--color-success)] ml-1">{s.lift ?? ""}</span>
                     </div>
                   ))}
                 </div>
                 <div className="rounded-md bg-[var(--color-warning-subtle)] p-2">
                   <p className="text-[11px] text-[var(--color-ink-muted)] mb-1">Негативные сигналы</p>
-                  {research.conversion_signals.negative_predictors.slice(0, 2).map((s: any, i: number) => (
+                  {(research.conversion_signals?.negative_predictors ?? []).slice(0, 2).map((s: any, i: number) => (
                     <div key={i} className="text-xs mb-1">
                       <span className="font-medium">• {s.signal}</span>
-                      <span className="text-[var(--color-warning)] ml-1">{s.lift}</span>
+                      <span className="text-[var(--color-warning)] ml-1">{s.lift ?? ""}</span>
                     </div>
                   ))}
                 </div>

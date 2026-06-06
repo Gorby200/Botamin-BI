@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import "@fontsource-variable/fraunces";
 @import "@fontsource-variable/hanken-grotesk";
 @import "@fontsource/geist-mono";
 
@@ -62,7 +61,9 @@
   --radius-xl: 1.25rem;
 
   /* Font families */
-  --font-display: "Fraunces Variable", serif;
+  /* Headings/display share the primary sans (Hanken Grotesk) — one consistent,
+     sans-serif typographic voice across the whole product (no serif clash). */
+  --font-display: "Hanken Grotesk Variable", system-ui, sans-serif;
   --font-sans: "Hanken Grotesk Variable", system-ui, sans-serif;
   --font-mono: "Geist Mono", monospace;
 
@@ -250,3 +251,24 @@ h1, h2, h3, h4 {
 .stagger > *:nth-child(4) { animation-delay: 180ms; }
 .stagger > *:nth-child(5) { animation-delay: 240ms; }
 .stagger > *:nth-child(6) { animation-delay: 300ms; }
+
+/* ─── Print / PDF export (Client Report page) ─── */
+@media print {
+  @page { size: A4; margin: 14mm; }
+  .no-print { display: none !important; }
+  html, body { background: #fff !important; }
+  /* Collapse the app shell so the report fills the page */
+  .flex.min-h-screen { display: block !important; }
+  main { overflow: visible !important; }
+  .report-doc {
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    /* Keep band colours/backgrounds in the exported PDF */
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  /* Don't split a section across pages */
+  .report-block { break-inside: avoid; page-break-inside: avoid; }
+  .report-doc table { break-inside: auto; }
+}

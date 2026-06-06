@@ -243,14 +243,19 @@ def compute_metrics(df: pd.DataFrame) -> dict:
         # drop attribution at this stage (calls whose furthest == previous stage)
         if i > 0:
             dropped_here = conv[conv["furthest_stage"] == (i - 1)]
+            dropped_abs = prev - cnt
+            # Binary attribution: context is the ONLY uncontrollable bucket; everything
+            # else that was lost here is, by the project's two-layer model, controllable.
+            # This guarantees context_loss + controllable_loss == dropped_abs exactly
+            # (no phantom "none" remainder that breaks on-screen subtraction).
+            ctx_loss = int((dropped_here["loss_layer"] == "context").sum())
             attr = {
                 "client_hangup": int((dropped_here["end_attribution"] == "client_hangup").sum()),
                 "bot_hangup": int((dropped_here["end_attribution"] == "bot_hangup").sum()),
                 "technical": int((dropped_here["end_attribution"].isin(["technical", ""])).sum()),
-                "context_loss": int((dropped_here["loss_layer"] == "context").sum()),
-                "controllable_loss": int((dropped_here["loss_layer"] == "controllable").sum()),
+                "context_loss": ctx_loss,
+                "controllable_loss": max(0, dropped_abs - ctx_loss),
             }
-            dropped_abs = prev - cnt
         else:
             attr = {}
             dropped_abs = 0
@@ -415,15 +420,19 @@ def compute_metrics(df: pd.DataFrame) -> dict:
 
     # ── LOSS ATTRIBUTION (context vs controllable) ──────────────────────────
     lost = conv[conv["furthest_stage"] < 4]
-    loss_layer_counts = lost["loss_layer"].value_counts().to_dict()
     loss_reason_counts = lost["loss_reason"].value_counts().to_dict()
-    n_context = int(loss_layer_counts.get("context", 0))
-    n_controllable = int(loss_layer_counts.get("controllable", 0))
+    n_lost = len(lost)
+    # Binary split (matches the two-layer model): context = uncontrollable; everything
+    # else lost is controllable. So context + controllable == n_lost == Σ(by_reason),
+    # and the shares sum to exactly 1.0 (no unfilled sliver on the hero loss bar).
+    n_context = int((lost["loss_layer"] == "context").sum())
+    n_controllable = n_lost - n_context
     loss_attribution = {
         "context": n_context,
         "controllable": n_controllable,
-        "context_share": _safe_div(n_context, len(lost)),
-        "controllable_share": _safe_div(n_controllable, len(lost)),
+        "total_lost": n_lost,
+        "context_share": _safe_div(n_context, n_lost),
+        "controllable_share": _safe_div(n_controllable, n_lost),
         "by_reason": [{"reason": k, "label": LOSS_REASON_LABELS.get(k, k), "count": int(v)}
                       for k, v in sorted(loss_reason_counts.items(), key=lambda x: -x[1])],
     }

@@ -21,6 +21,8 @@ from __future__ import annotations
 
 import re
 
+from pipeline import methodology
+
 # ---------------------------------------------------------------------------
 # Turn parsing — data uses "bot:" / "user:" line prefixes (also tolerant of RU)
 # ---------------------------------------------------------------------------
@@ -487,6 +489,16 @@ def _result(*, source, connected, furthest_stage, consent, offer, meeting, qual,
             "longest_bot_monologue_words": longest_bot_monologue,
         },
         "quality_score": quality_score,
+        # Uniform contract with the LLM engine. The deterministic failsafe has no
+        # layer judgement, so we approximate all three V4 layers by quality_score
+        # (methodology recomputes total/grade and adds the deterministic outcome+gap).
+        "quality": methodology.quality_from_layers(
+            quality_score * 10, quality_score * 10, quality_score * 10,
+            furthest_stage=furthest_stage if isinstance(furthest_stage, int) else -1,
+            disqualified=bool(disqualified),
+        ),
+        "product_intel": {"insights": [], "jtbd": {"functional": "", "emotional": "", "trigger": ""}},
+        "recommendations": [],
         "loss_reason": loss_reason,
         "loss_layer": loss_layer,
         "summary": summary,
