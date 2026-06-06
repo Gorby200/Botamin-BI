@@ -6,9 +6,10 @@ import {
 } from "../thresholds";
 import Card from "../components/Card";
 import Skeleton from "../components/Skeleton";
+import DataSourceModal from "../components/DataSourceModal";
 import { fmtValue, bandText } from "../format";
 import type { Dashboard, Metric, ThresholdDef, Fmt } from "../types";
-import { Wand2, RefreshCw, RotateCcw, Check, Database, Brain, Upload, FileSpreadsheet, Globe } from "lucide-react";
+import { Wand2, RefreshCw, RotateCcw, Check, Database, Brain, Upload, FileSpreadsheet, Globe, Plus } from "lucide-react";
 
 /** Collect current value + fmt + name for every metric that has a thr_key. */
 function currentValues(d: Dashboard): Record<string, { value: number; name: string; fmt: Fmt }> {
@@ -38,6 +39,7 @@ export default function Settings() {
   const { data, loading } = useDashboard();
   const overrides = useOverrides();
   const [draft, setDraft] = useState<Overrides>(() => ({ ...overrides }));
+  const [showDataModal, setShowDataModal] = useState(false);
 
   const defs = data?.thresholds_defaults ?? [];
   const current = useMemo(() => (data ? currentValues(data) : {}), [data]);
@@ -140,18 +142,20 @@ export default function Settings() {
             </p>
           </div>
 
-          <div className="rounded-md border border-dashed border-[var(--color-border)] p-4 text-center">
-            <Upload size={24} className="mx-auto text-[var(--color-ink-muted)] mb-2" />
-            <p className="text-sm text-[var(--color-ink-secondary)] mb-1">
-              Для загрузки нового датасета запустите пайплайн:
+          <button
+            onClick={() => setShowDataModal(true)}
+            className="w-full rounded-md border border-dashed border-[var(--color-border)] p-4 text-center hover:border-[var(--color-accent)] hover:bg-[var(--color-accent-subtle)] transition-colors group"
+          >
+            <div className="w-12 h-12 rounded-full bg-[var(--color-bg-card-hover)] flex items-center justify-center mx-auto mb-3 group-hover:bg-[var(--color-accent)] transition-colors">
+              <Plus size={24} className="text-[var(--color-ink-muted)] group-hover:text-white transition-colors" />
+            </div>
+            <p className="text-sm font-medium text-[var(--color-ink)] mb-1">
+              Загрузить новый датасет
             </p>
-            <code className="text-xs bg-[var(--color-bg-card-hover)] px-2 py-1 rounded text-[var(--color-ink-tertiary)]">
-              python -m pipeline --sheet-url=&lt;URL&gt;
-            </code>
-            <p className="text-xs text-[var(--color-ink-muted)] mt-2">
-              или положите CSV/XLSX в <code className="text-[var(--color-accent)]">data/raw.csv</code>
+            <p className="text-xs text-[var(--color-ink-muted)]">
+              Google Sheets или CSV/XLSX файл → Анализ через 2-3 минуты
             </p>
-          </div>
+          </button>
         </div>
       </Card>
 
@@ -264,6 +268,8 @@ export default function Settings() {
           </div>
         </Card>
       ))}
+
+      {showDataModal && <DataSourceModal onClose={() => setShowDataModal(false)} />}
     </div>
   );
 }
