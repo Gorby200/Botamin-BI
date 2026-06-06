@@ -89,7 +89,7 @@ jobs:
           MIN_CLIENT_TURNS: ${{ github.event.inputs.min_client_turns || '3' }}
           LLM_SAMPLE_SIZE: ${{ github.event.inputs.llm_sample_size || '1000' }}
         run: |
-          SHEET_URL="${{ github.event.inputs.sheet_url }}"
+          SHEET_URL="${{ github.event.inputs.sheet_url || vars.DEFAULT_SHEET_URL }}"
           LLM_SCOPE="${{ github.event.inputs.llm_scope || 'focus' }}"
 
           echo "=== Running pipeline with LLM scope: $LLM_SCOPE ==="
