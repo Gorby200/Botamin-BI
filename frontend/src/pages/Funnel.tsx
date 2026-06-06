@@ -16,6 +16,9 @@ export default function Funnel() {
 
   const { funnel, drivers, bottleneck, reach } = data;
   const maxCount = Math.max(...funnel.map((f) => f.count), 1);
+  const stageName: Record<string, string> = Object.fromEntries(funnel.map((f) => [f.stage, f.label]));
+  const bnFrom = stageName[bottleneck.stage_from] || bottleneck.stage_from;
+  const bnTo = stageName[bottleneck.stage_to] || bottleneck.stage_to;
 
   return (
     <div className="p-8 pt-5 space-y-7 max-w-[1280px]">
@@ -63,17 +66,21 @@ export default function Funnel() {
 
       <div className="rounded-[var(--radius-xl)] border border-[var(--color-band-bad)]/25 bandbg-bad p-5">
         <h3 className="text-base font-medium" style={{ fontFamily: "var(--font-display)" }}>
-          Узкое место: {bottleneck.label} ({pct(bottleneck.conversion)})
+          Узкое место: {bnFrom} → {bnTo} <span className="stat-num">({pct(bottleneck.conversion)})</span>
         </h3>
         <p className="mt-1 text-sm text-[var(--color-ink-secondary)]">
-          {bottleneck.dropped_abs.toLocaleString("ru-RU")} потерянных клиентов. {bottleneck.rationale}
+          Самый большой абсолютный отвал — {bottleneck.dropped_abs.toLocaleString("ru-RU")} клиентов
+          (переход <span className="stat-num">{bottleneck.stage_from}→{bottleneck.stage_to}</span>). {bottleneck.rationale}
         </p>
       </div>
 
       <section>
-        <h2 className="mb-3 text-sm font-medium uppercase tracking-wider text-[var(--color-ink-secondary)]">
-          Драйверы — 4 переходные конверсии (= 4 блока промпта)
+        <h2 className="mb-1 text-base font-medium text-[var(--color-ink)]" style={{ fontFamily: "var(--font-display)" }}>
+          Драйверы роста: 4 перехода = 4 блока промпта
         </h2>
+        <p className="mb-3 text-xs text-[var(--color-ink-tertiary)]">
+          Каждый переход воронки правится отдельным блоком промпта; для каждого посчитан размер A/B-выборки.
+        </p>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
           {drivers.map((d) => <DriverCard key={d.id} d={d} />)}
         </div>
@@ -88,7 +95,8 @@ function DriverCard({ d }: { d: Driver }) {
       <StatCard m={d} />
       <div className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-4 py-3 text-[11px] text-[var(--color-ink-tertiary)] space-y-1">
         <div className="flex justify-between"><span>Блок промпта</span><span className="text-[var(--color-ink-secondary)]">{BLOCK_LABEL[d.prompt_block] || d.prompt_block}</span></div>
-        <div className="flex justify-between"><span>MDE для A/B</span><span className="stat-num">{d.mde_pp} pp</span></div>
+        <div className="flex justify-between" title="Минимальный заметный эффект — наименьшее изменение конверсии, которое A/B-тест сможет статистически различить">
+          <span className="cursor-help underline decoration-dotted decoration-[var(--color-ink-muted)]">MDE для A/B</span><span className="stat-num">{d.mde_pp} pp</span></div>
         <div className="flex justify-between"><span>Выборка на ветку</span><span className="stat-num">{d.sample_needed.toLocaleString("ru-RU")}</span></div>
       </div>
     </div>

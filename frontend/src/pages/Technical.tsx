@@ -48,8 +48,8 @@ export default function Technical() {
       <section>
         <div className="mb-3 flex items-center gap-2">
           <Lock size={15} className="text-[var(--color-secondary)]" />
-          <h2 className="text-sm font-medium uppercase tracking-wider text-[var(--color-ink-secondary)]">
-            Необходимо извлечь из оригинала записи звонка
+          <h2 className="text-base font-medium text-[var(--color-ink)]" style={{ fontFamily: "var(--font-display)" }}>
+            Нужно извлечь из аудиозаписи звонка
           </h2>
         </div>
         <p className="mb-4 max-w-3xl text-sm text-[var(--color-ink-tertiary)]">

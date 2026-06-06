@@ -1,4 +1,5 @@
 import { useBacklog } from "../hooks";
+import { pct } from "../format";
 import Card from "../components/Card";
 import Badge from "../components/Badge";
 import Skeleton from "../components/Skeleton";
@@ -56,7 +57,7 @@ function HypothesisCard({ h }: { h: BacklogItem }) {
           <div className="rounded-[var(--radius-md)] bg-[var(--color-bg-card-hover)] p-3 space-y-2">
             <p className="text-[10px] font-medium uppercase tracking-wider text-[var(--color-ink-tertiary)]">Доказательная база</p>
             <div className="text-sm text-[var(--color-ink-secondary)]">
-              Метрика <span className="stat-num">{h.evidence.metric}</span> = <span className="stat-num">{(h.evidence.value * 100).toFixed(1)}%</span>
+              Метрика <span className="stat-num">{h.evidence.metric}</span> = <span className="stat-num">{pct(h.evidence.value)}</span>
             </div>
             {h.evidence.note && <p className="text-xs text-[var(--color-ink-tertiary)]">{h.evidence.note}</p>}
             {h.evidence.patterns.slice(0, 3).map((p, i) => (
@@ -81,19 +82,19 @@ function HypothesisCard({ h }: { h: BacklogItem }) {
         {/* Right: impact + A/B */}
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
-            <Metric label="Δ драйвер" value={`+${h.expected_driver_delta_pp.toFixed(1)}pp`} />
+            <Metric label="Δ шага" value={`+${h.expected_driver_delta_pp.toFixed(2)}pp`} />
             <Metric label="Δ NSM" value={isContext ? "—" : `+${h.expected_nsm_delta_pp.toFixed(2)}pp`} accent />
           </div>
-          <Row label="Прохождение вниз" value={`${(h.downstream_pass_through * 100).toFixed(1)}%`} />
+          <Row label="Прохождение вниз" value={pct(h.downstream_pass_through)} />
           <Row label="Усилие" value={<Badge variant={eff.variant}>{eff.label}</Badge>} />
-          <Row label="Уверенность" value={`${(h.confidence * 100).toFixed(0)}%`} />
+          <Row label="Уверенность" value={pct(h.confidence)} />
 
           {!isContext && (
             <div className="rounded-[var(--radius-md)] border border-[var(--color-border)] p-3 space-y-1.5">
               <p className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wider text-[var(--color-ink-tertiary)]">
                 <FlaskConical size={11} /> Дизайн A/B
               </p>
-              <Row small label="Primary" value={h.ab_design.primary} />
+              <Row small label="Ключевая метрика" value={h.ab_design.primary} />
               <Row small label="MDE" value={`±${h.ab_design.mde_pp}pp`} />
               <Row small label="Выборка/ветка" value={h.ab_design.sample.toLocaleString("ru-RU")} />
             </div>

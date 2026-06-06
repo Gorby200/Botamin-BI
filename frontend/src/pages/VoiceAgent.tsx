@@ -41,7 +41,7 @@ export default function VoiceAgent() {
       )}
 
       <section>
-        <h2 className="mb-3 text-sm font-medium uppercase tracking-wider text-[var(--color-ink-secondary)]">Качество диалога</h2>
+        <h2 className="mb-3 text-base font-medium text-[var(--color-ink)]" style={{ fontFamily: "var(--font-display)" }}>Качество диалога</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-4">
           {quality.metrics.map((m) => <StatCard key={m.id} m={m} />)}
         </div>
