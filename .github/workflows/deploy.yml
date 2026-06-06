@@ -37,9 +37,6 @@ env:
   NODE_VERSION: "24"
   PYTHON_VERSION: "3.13"
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   build-and-deploy:
     name: Build & Deploy to GitHub Pages
