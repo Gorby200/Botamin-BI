@@ -65,15 +65,15 @@ export default function Report() {
       <Block n="1" title="Резюме для руководителя" icon={<Target size={16} />}>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
           <KPI label="NSM · QMR" value={pct(nsm.value, 2)} sub="квал. встречи / согласия" band={nsm.band} />
-          <KPI label="Дозвон" value={pct(connect, 0)} sub="опенер доставлен" />
-          <KPI label="Вовлечение" value={pct(engageRate, 1)} sub="холодный → тёплый" />
-          <KPI label="Meeting Rate" value={meetingRate != null ? pct(meetingRate, 1) : "—"} sub="встречи / согласия" />
+          <KPI label="Дозвон" value={pct(connect, 2)} sub="опенер доставлен" />
+          <KPI label="Вовлечение" value={pct(engageRate, 2)} sub="холодный → тёплый" />
+          <KPI label="Meeting Rate" value={meetingRate != null ? pct(meetingRate, 2) : "—"} sub="встречи / согласия" />
         </div>
         <p className="text-sm leading-relaxed text-[var(--color-ink-secondary)]">
           {nsm.verdict ? <><b>{nsm.verdict}.</b> </> : null}
-          Узкое место — <b>{bottleneck?.label}</b> (конверсия {pct(bottleneck?.conversion ?? 0, 1)},
+          Узкое место — <b>{bottleneck?.label}</b> (конверсия {pct(bottleneck?.conversion ?? 0, 2)},
           теряем {bottleneck?.dropped_abs?.toLocaleString("ru-RU")} клиентов). Из всех потерь
-          <b> {pct(loss.controllable_share, 0)} управляемы промптом</b> и {pct(loss.context_share, 0)} —
+          <b> {pct(loss.controllable_share, 2)} управляемы промптом</b> и {pct(loss.context_share, 2)} —
           это связь/дозвон (зона телефонии/ASR). Фокус усилий — блок «{bottleneck?.prompt_block}».
         </p>
       </Block>
@@ -90,7 +90,7 @@ export default function Report() {
               <tr key={f.stage} className="border-b border-[var(--color-border)]/60">
                 <td className="py-1.5 font-medium">{f.stage} · {f.label}</td>
                 <td className="py-1.5 text-right stat-num">{f.count.toLocaleString("ru-RU")}</td>
-                <td className="py-1.5 text-right stat-num">{f.stage === "S0" ? "—" : pct(f.conversion_from_prev, 1)}</td>
+                <td className="py-1.5 text-right stat-num">{f.stage === "S0" ? "—" : pct(f.conversion_from_prev, 2)}</td>
                 <td className="py-1.5 text-right stat-num text-[var(--color-ink-tertiary)]">{f.dropped_abs ? `−${f.dropped_abs.toLocaleString("ru-RU")}` : "—"}</td>
               </tr>
             ))}
@@ -105,8 +105,8 @@ export default function Report() {
           <div className="bg-[var(--color-band-ok)]" style={{ width: `${(loss.context_share * 100).toFixed(1)}%` }} />
         </div>
         <p className="text-xs text-[var(--color-ink-secondary)] mb-2">
-          <b className="band-bad">Управляемое (промпт): {pct(loss.controllable_share, 0)}</b> ·
-          <b className="band-ok"> Контекст (связь): {pct(loss.context_share, 0)}</b>
+          <b className="band-bad">Управляемое (промпт): {pct(loss.controllable_share, 2)}</b> ·
+          <b className="band-ok"> Контекст (связь): {pct(loss.context_share, 2)}</b>
         </p>
         <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-[var(--color-ink-secondary)]">
           {loss.by_reason.slice(0, 6).map((r) => (
@@ -179,7 +179,7 @@ export default function Report() {
       <Block n="8" title="Контр-метрики (что нельзя сломать ради роста)" icon={<Target size={16} />}>
         <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm text-[var(--color-ink-secondary)]">
           {guardrails.map((g) => (
-            <span key={g.id}>{g.name}: <b className="stat-num">{g.fmt === "sec" ? fmtDuration(g.value) : g.fmt === "pct" ? pct(g.value, 1) : g.value}</b></span>
+            <span key={g.id}>{g.name}: <b className="stat-num">{g.fmt === "sec" ? fmtDuration(g.value) : g.fmt === "pct" ? pct(g.value, 2) : g.value}</b></span>
           ))}
         </div>
       </Block>
@@ -230,7 +230,7 @@ function PatternCol({ title, rows, good }: { title: string; rows: { psy_id: stri
           <div key={p.psy_id} className="flex items-center justify-between gap-2 text-xs">
             <span className="truncate text-[var(--color-ink-secondary)]">{p.name}</span>
             <span className="shrink-0 stat-num text-[var(--color-ink-tertiary)]">
-              {pct(p.share, 0)} · <span className={p.lift_on_advance >= 0 ? "band-good" : "band-bad"}>{p.lift_on_advance >= 0 ? "+" : ""}{(p.lift_on_advance * 100).toFixed(0)}pp</span>
+              {pct(p.share, 2)} · <span className={p.lift_on_advance >= 0 ? "band-good" : "band-bad"}>{p.lift_on_advance >= 0 ? "+" : ""}{(p.lift_on_advance * 100).toFixed(0)}pp</span>
             </span>
           </div>
         ))}

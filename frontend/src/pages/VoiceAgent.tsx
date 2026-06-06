@@ -23,7 +23,7 @@ export default function VoiceAgent() {
   quality.metrics.filter((m) => m.band !== "good").forEach((m) =>
     recs.push({ text: m.comment, tag: m.name }));
   negatives.filter((p) => p.share >= 0.1).slice(0, 3).forEach((p) =>
-    recs.push({ text: `Паттерн «${p.name}» в ${pct(p.share, 0)} разговоров (lift ${p.lift_on_advance >= 0 ? "+" : ""}${(p.lift_on_advance * 100).toFixed(0)}pp к продвижению). Снизить частоту.`, tag: p.psy_id }));
+    recs.push({ text: `Паттерн «${p.name}» в ${pct(p.share, 2)} разговоров (lift ${p.lift_on_advance >= 0 ? "+" : ""}${(p.lift_on_advance * 100).toFixed(0)}pp к продвижению). Снизить частоту.`, tag: p.psy_id }));
 
   return (
     <div className="p-8 pt-5 space-y-7 max-w-[1280px]">
@@ -143,7 +143,7 @@ function PatternRow({ p, bad }: { p: { psy_id: string; name: string; share: numb
         {p.category && <span className="hidden lg:inline text-[10px] text-[var(--color-ink-muted)] shrink-0">· {p.category}</span>}
       </div>
       <div className="flex items-center gap-3 shrink-0">
-        <span className="stat-num text-xs text-[var(--color-ink-tertiary)]">{pct(p.share, 0)}</span>
+        <span className="stat-num text-xs text-[var(--color-ink-tertiary)]">{pct(p.share, 2)}</span>
         <span className={`stat-num text-xs ${p.lift_on_advance >= 0 ? "band-good" : "band-bad"}`}>
           {p.lift_on_advance >= 0 ? "+" : ""}{(p.lift_on_advance * 100).toFixed(0)}pp
         </span>

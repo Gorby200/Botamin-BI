@@ -113,7 +113,7 @@ export default function Overview() {
               </div>
               <div className="text-[10px] text-[var(--color-ink-muted)] stat-num">{t.fromStage}→{t.toStage}</div>
               <div className="mt-1.5 flex items-end gap-2">
-                <span className={`stat-num text-2xl leading-none ${t.isBottleneck ? "band-bad" : "text-[var(--color-ink)]"}`}>{pct(t.conv, 0)}</span>
+                <span className={`stat-num text-2xl leading-none ${t.isBottleneck ? "band-bad" : "text-[var(--color-ink)]"}`}>{pct(t.conv, 2)}</span>
                 {t.isBottleneck && <span className="mb-0.5 rounded-full bg-[var(--color-band-bad)] px-1.5 py-0.5 text-[9px] font-medium text-white uppercase tracking-wide">узкое место</span>}
               </div>
               <div className="mt-0.5 text-[11px] text-[var(--color-ink-tertiary)]">−{t.dropped.toLocaleString("ru-RU")} клиентов</div>
@@ -137,11 +137,11 @@ export default function Overview() {
             <div className="flex h-7 w-full overflow-hidden rounded-[var(--radius-sm)]">
               <div className="flex items-center justify-center text-[11px] font-medium text-white"
                    style={{ width: `${ctxShare * 100}%`, background: "var(--color-band-ok)" }}>
-                {ctxShare >= 0.08 && `Контекст ${pct(ctxShare, 0)}`}
+                {ctxShare >= 0.08 && `Контекст ${pct(ctxShare, 2)}`}
               </div>
               <div className="flex items-center justify-center text-[11px] font-medium text-white"
                    style={{ width: `${loss.controllable_share * 100}%`, background: "var(--color-accent)" }}>
-                Управляемое {pct(loss.controllable_share, 0)}
+                Управляемое {pct(loss.controllable_share, 2)}
               </div>
             </div>
           </div>

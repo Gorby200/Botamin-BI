@@ -27,8 +27,9 @@ function currentValues(d: Dashboard): Record<string, { value: number; name: stri
 }
 
 // pct thresholds are stored 0..1 but shown to humans as percent.
-// For threshold inputs, use whole numbers (no decimals) — cleaner UI.
-const toDisplay = (v: number, fmt: Fmt) => (fmt === "pct" ? Math.round(v * 100) : v);
+// Thresholds use TENTHS (1 decimal) — a deliberately coarser precision than the
+// hundredths used for live metrics elsewhere (you tune a band, not report a number).
+const toDisplay = (v: number, fmt: Fmt) => (fmt === "pct" ? Math.round(v * 1000) / 10 : v);
 const fromDisplay = (s: string, fmt: Fmt) => {
   const n = parseFloat(s.replace(",", "."));
   if (Number.isNaN(n)) return 0;
@@ -51,6 +52,47 @@ export default function Settings() {
   const changeScope = (v: string) => {
     setScopePref(v);
     try { localStorage.setItem("botamin.scope_pref", v); } catch { /* ignore */ }
+  };
+
+  // "Пересчитать звонки" — trigger the real LLM re-analysis. A static site can't run
+  // Python, so we dispatch the GitHub Actions workflow (deploy.yml) which re-runs the
+  // pipeline with the chosen scope and redeploys. Needs a fine-grained GitHub token
+  // (Actions: write) — stored only in this browser, sent only to api.github.com.
+  const GH = { owner: "Gorby200", repo: "Botamin-BI", workflow: "deploy.yml", ref: "main" };
+  const [ghToken, setGhTokenState] = useState<string>(() => {
+    try { return localStorage.getItem("botamin.gh_token") || ""; } catch { return ""; }
+  });
+  const setGhToken = (v: string) => {
+    setGhTokenState(v);
+    try { localStorage.setItem("botamin.gh_token", v); } catch { /* ignore */ }
+  };
+  const [recalc, setRecalc] = useState<{ state: "idle" | "sending" | "done" | "error"; msg: string }>({ state: "idle", msg: "" });
+  const recalcCalls = async () => {
+    if (!ghToken.trim()) { setRecalc({ state: "error", msg: "Вставьте GitHub-токен ниже." }); return; }
+    setRecalc({ state: "sending", msg: "" });
+    try {
+      const res = await fetch(
+        `https://api.github.com/repos/${GH.owner}/${GH.repo}/actions/workflows/${GH.workflow}/dispatches`,
+        {
+          method: "POST",
+          headers: {
+            Accept: "application/vnd.github+json",
+            Authorization: `Bearer ${ghToken.trim()}`,
+            "X-GitHub-Api-Version": "2022-11-28",
+          },
+          body: JSON.stringify({ ref: GH.ref, inputs: { llm_scope: chosenScope } }),
+        }
+      );
+      if (res.status === 204) {
+        setRecalc({ state: "done", msg: `Запущено в режиме «${chosenScope}». Сборка идёт на GitHub Actions (~5–10 мин), затем обновите страницу.` });
+      } else {
+        let detail = "";
+        try { detail = (await res.json())?.message || ""; } catch { /* ignore */ }
+        setRecalc({ state: "error", msg: `Ошибка ${res.status}. ${detail}` });
+      }
+    } catch (e: any) {
+      setRecalc({ state: "error", msg: `Не удалось отправить запрос: ${e?.message || e}` });
+    }
   };
 
   const defs = data?.thresholds_defaults ?? [];
@@ -205,10 +247,48 @@ export default function Settings() {
             </div>
           ) : (
             <p className="text-xs text-[var(--color-ink-muted)]">
-              Данные собраны в этом охвате. Охват влияет на стоимость и время анализа; применяется при запуске
-              пайплайна (флаг <code className="text-[var(--color-accent)]">--llm-scope</code> или GitHub Actions).
+              Данные собраны в этом охвате. Охват влияет на стоимость и время анализа.
             </p>
           )}
+
+          {/* Recalculate calls — dispatch the LLM re-analysis (GitHub Actions) */}
+          <div className="border-t border-[var(--color-border)] pt-3 mt-1 space-y-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <div className="text-sm font-medium text-[var(--color-ink)]">Пересчитать звонки</div>
+                <div className="text-[11px] text-[var(--color-ink-muted)]">
+                  Отправит выборку «{chosenScope}» в LLM на анализ и пересоберёт дашборд (GitHub Actions).
+                </div>
+              </div>
+              <button onClick={recalcCalls} disabled={recalc.state === "sending"}
+                className="inline-flex items-center gap-2 rounded-[var(--radius-md)] bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50">
+                <RefreshCw size={15} className={recalc.state === "sending" ? "animate-spin" : ""} />
+                Пересчитать ({chosenScope})
+              </button>
+            </div>
+            <input
+              type="password"
+              value={ghToken}
+              onChange={(e) => setGhToken(e.target.value)}
+              placeholder="GitHub fine-grained token (Actions: write)"
+              className="w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-card-hover)] px-3 py-1.5 text-sm focus:outline-none focus:border-[var(--color-accent)]"
+            />
+            {recalc.msg && (
+              <p className={`text-xs ${recalc.state === "error" ? "band-bad" : "band-good"}`}>
+                {recalc.msg}{" "}
+                {recalc.state === "done" && (
+                  <a className="text-[var(--color-accent)] underline" target="_blank" rel="noreferrer"
+                     href={`https://github.com/${GH.owner}/${GH.repo}/actions`}>Открыть Actions →</a>
+                )}
+              </p>
+            )}
+            <p className="text-[11px] leading-relaxed text-[var(--color-ink-muted)]">
+              Нужен fine-grained токен GitHub с правом <b>Actions: Read and write</b> на репозиторий
+              <code className="text-[var(--color-accent)]"> {GH.owner}/{GH.repo}</code>. Хранится только в этом
+              браузере, отправляется только на api.github.com. У репозитория должен быть источник данных
+              (переменная DEFAULT_SHEET_URL или закоммиченный CSV).
+            </p>
+          </div>
         </div>
       </Card>
 
@@ -233,7 +313,7 @@ export default function Settings() {
                     </div>
                   </div>
                   <div className="w-20 text-right">
-                    {cur ? <span className={`stat-num text-sm ${bandText[band]}`}>{fmtValue(cur.value, cur.fmt)}</span>
+                    {cur ? <span className={`stat-num text-sm ${bandText[band]}`}>{cur.fmt === "pct" ? `${(cur.value * 100).toFixed(1)}%` : fmtValue(cur.value, cur.fmt)}</span>
                          : <span className="text-xs text-[var(--color-ink-muted)]">—</span>}
                   </div>
                   <NumInput value={effGood(d)} fmt={d.fmt} onChange={(v) => setField(d.key, "good", v, d)} />
@@ -254,11 +334,12 @@ export default function Settings() {
 }
 
 function NumInput({ value, fmt, onChange }: { value: number; fmt: Fmt; onChange: (v: number) => void }) {
-  const step = fmt === "pct" ? 1 : fmt === "sec" ? 10 : 0.05;
+  const step = fmt === "pct" ? 0.1 : fmt === "sec" ? 10 : 0.05;
   const display = toDisplay(value, fmt);
 
-  const increment = () => onChange(value + (fmt === "pct" ? 0.01 : step));
-  const decrement = () => onChange(value - (fmt === "pct" ? 0.01 : step));
+  // pct is stored 0..1: 0.1 display-step (a tenth of a percent) = 0.001 stored.
+  const increment = () => onChange(value + (fmt === "pct" ? 0.001 : step));
+  const decrement = () => onChange(value - (fmt === "pct" ? 0.001 : step));
 
   return (
     <div className="w-28 flex items-center justify-end gap-1.5">

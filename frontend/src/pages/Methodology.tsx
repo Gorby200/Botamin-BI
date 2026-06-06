@@ -51,10 +51,10 @@ export default function Methodology() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <LayerCard icon={<PhoneCall size={16} />} tone="ok" title="Контекст (связь)"
             body="Дозвон, качество линии, обвал ASR («не слышу», «алло», «что?»), мгновенный сброс. Зона диалера/телефонии/ASR. Промпт здесь НЕ помогает."
-            foot={ctx != null ? `Сейчас: ${pct(ctx, 0)} потерь` : ""} />
+            foot={ctx != null ? `Сейчас: ${pct(ctx, 2)} потерь` : ""} />
           <LayerCard icon={<MessageSquare size={16} />} tone="accent" title="Управляемое (промпт)"
             body="Опенер → оффер → встреча → квалификация. Всё, что бот говорит и как ведёт диалог. Именно это аналитик правит и проверяет A/B-тестами."
-            foot={ctrl != null ? `Сейчас: ${pct(ctrl, 0)} потерь` : ""} />
+            foot={ctrl != null ? `Сейчас: ${pct(ctrl, 2)} потерь` : ""} />
         </div>
       </Section>
 

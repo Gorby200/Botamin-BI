@@ -186,7 +186,7 @@ function CallDrawer({ id, pageHint, onClose }: { id: string; pageHint?: string; 
             <div className="grid grid-cols-3 gap-3">
               <Tile label="Отзывчивость" v={data.voice.responsiveness.toFixed(2)} />
               <Tile label="Реплик-перепрос." v={String(data.voice.repair_attempts)} />
-              <Tile label="Речь бота" v={pct(data.voice.bot_talk_share, 0)} />
+              <Tile label="Речь бота" v={pct(data.voice.bot_talk_share, 2)} />
             </div>
 
             {/* Psychological patterns (with names + evidence) */}
