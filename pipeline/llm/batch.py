@@ -18,6 +18,7 @@ USAGE:
 """
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import logging
@@ -295,12 +296,13 @@ class BatchAnalyzer:
                 error=str(e)
             ) for c in calls]
 
-    async def analyze_all(self, calls: list[dict], model: str = "") -> dict[str, BatchResult]:
-        """Analyze all calls in batches.
+    async def analyze_all(self, calls: list[dict], model: str = "", concurrency: int = 6) -> dict[str, BatchResult]:
+        """Analyze all calls in batches with concurrent processing.
 
         Args:
             calls: List of all calls to process
             model: Optional model override
+            concurrency: Number of batches to process concurrently
 
         Returns:
             Dict mapping call_id -> BatchResult
@@ -311,13 +313,29 @@ class BatchAnalyzer:
         all_results = {}
         batches = [calls[i:i + self.batch_size] for i in range(0, len(calls), self.batch_size)]
 
-        logger.info("Batch analysis: %d calls in %d batches (size=%d)",
-                    len(calls), len(batches), self.batch_size)
+        logger.info("Batch analysis: %d calls in %d batches (size=%d, concurrency=%d)",
+                    len(calls), len(batches), self.batch_size, concurrency)
 
-        for i, batch in enumerate(batches):
-            logger.info("Processing batch %d/%d (%d calls)", i+1, len(batches), len(batch))
-            results = await self.analyze_batch(batch, model)
-            for r in results:
+        # Process batches concurrently with semaphore
+        from asyncio import Semaphore
+
+        sem = Semaphore(concurrency)
+
+        async def process_batch(idx: int, batch: list[dict]) -> list[BatchResult]:
+            async with sem:
+                logger.info("Processing batch %d/%d (%d calls)", idx+1, len(batches), len(batch))
+                return await self.analyze_batch(batch, model)
+
+        # Run all batches concurrently (controlled by semaphore)
+        tasks = [process_batch(i, batch) for i, batch in enumerate(batches)]
+        all_batch_results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # Merge results
+        for batch_results in all_batch_results:
+            if isinstance(batch_results, Exception):
+                logger.error("Batch failed: %s", batch_results)
+                continue
+            for r in batch_results:
                 all_results[r.call_id] = r
 
         logger.info("Batch analysis complete: %d/%d successful",
