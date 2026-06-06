@@ -27,6 +27,14 @@ on:
           - focus
           - full
           - sample
+      min_client_turns:
+        description: "Minimum client turns for 'focus' scope (default: 3)"
+        required: false
+        default: "3"
+      llm_sample_size:
+        description: "Sample size for 'sample' scope (default: 1000)"
+        required: false
+        default: "1000"
 
 # Prevent concurrent deployments
 concurrency:
@@ -72,6 +80,14 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: 📊 Run data pipeline
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ZHIPU_API_KEY: ${{ secrets.ZHIPU_API_KEY }}
+          ZHIPU_BASE_URL: ${{ vars.ZHIPU_BASE_URL }}
+          LLM_PRIMARY_MODEL: ${{ vars.LLM_PRIMARY_MODEL }}
+          LLM_FALLBACK_MODEL: ${{ vars.LLM_FALLBACK_MODEL }}
+          MIN_CLIENT_TURNS: ${{ github.event.inputs.min_client_turns || '3' }}
+          LLM_SAMPLE_SIZE: ${{ github.event.inputs.llm_sample_size || '1000' }}
         run: |
           SHEET_URL="${{ github.event.inputs.sheet_url }}"
           LLM_SCOPE="${{ github.event.inputs.llm_scope || 'focus' }}"
