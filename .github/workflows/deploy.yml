@@ -36,6 +36,7 @@ concurrency:
 env:
   NODE_VERSION: "24"
   PYTHON_VERSION: "3.13"
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   build-and-deploy:
@@ -75,17 +76,25 @@ jobs:
           SHEET_URL="${{ github.event.inputs.sheet_url }}"
           LLM_SCOPE="${{ github.event.inputs.llm_scope || 'focus' }}"
 
-          echo "Running pipeline with LLM scope: $LLM_SCOPE"
+          echo "=== Running pipeline with LLM scope: $LLM_SCOPE ==="
 
           # Use Google Sheets if provided, otherwise use local CSV
           if [ -n "$SHEET_URL" ]; then
+            echo "📄 Using Google Sheets data source"
             python -m pipeline --sheet "$SHEET_URL" --llm-scope "$LLM_SCOPE"
           elif [ -f "data/raw.csv" ]; then
+            echo "📁 Using local data/raw.csv"
             python -m pipeline --file data/raw.csv --llm-scope "$LLM_SCOPE"
           else
             echo "⚠️ No data source found!"
-            echo "Either add data/raw.csv to the repository or provide sheet_url in workflow parameters."
-            exit 1
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "Pipeline SKIPPED - deploying frontend without data."
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo ""
+            echo "To add data:"
+            echo "  Option 1: Run workflow manually with sheet_url parameter"
+            echo "  Option 2: Commit data/raw.csv to repository"
+            echo ""
           fi
 
       - name: 🔨 Build React frontend
