@@ -8,15 +8,25 @@ import ScopeSelector from "./ScopeSelector";
  *  - A small segmented control on the right shows the analysis SCOPE (depth), with the
  *    active segment highlighted. It is informational (build-time flag), explained by the ⓘ.
  */
-export default function AnalysisBanner({ llm, totalRows }: { llm: LLMStatus; totalRows?: number }) {
+export default function AnalysisBanner(
+  { llm, totalRows, engaged }: { llm: LLMStatus; totalRows?: number; engaged?: number }
+) {
   const isLLM = String(llm.mode || "").startsWith("llm");
-  const analyzed = llm.calls_analyzed.toLocaleString("ru-RU");
-  const total = totalRows ? totalRows.toLocaleString("ru-RU") : null;
-  // Clear, non-misleading: N substantive dialogues deep-analyzed by the LLM; ALL calls
-  // get the deterministic baseline. (Old "261 из 261 диалогов" read as "only 261 total".)
-  const llmText = total
-    ? `LLM-разбор содержательных диалогов: ${analyzed} из ${total} звонков · остальные — детерминированно`
-    : `LLM-разбор: ${analyzed} содержательных диалогов · остальные — детерминированно`;
+  // Whole-funnel context, ALL pulled from metrics (no hardcoded numbers):
+  //   analyzed = LLM-deep-analysed substantive dialogues
+  //   engaged  = состоявшиеся разговоры (reach.engaged)
+  //   total    = все звонки (meta.total_rows)
+  const fmt = (n?: number) => (n != null ? n.toLocaleString("ru-RU") : "—");
+  const analyzed = fmt(llm.calls_analyzed);
+  const parts: string[] = [];
+  if (isLLM) parts.push(`${analyzed} содержательных`);
+  if (engaged != null) parts.push(`из ${fmt(engaged)} состоявшихся разговоров`);
+  if (totalRows != null) parts.push(`всего ${fmt(totalRows)} звонков`);
+  const funnelText = parts.join(" · ");
+  const llmText = funnelText || `${analyzed} диалогов разобрано`;
+  const detText = llm.note
+    ? llm.note
+    : (funnelText ? `${funnelText} · разметка по правилам` : "метрики посчитаны детерминированными правилами");
   return (
     <div
       className={`flex items-center gap-3 rounded-[var(--radius-md)] border px-3.5 py-2 text-xs ${
@@ -31,7 +41,7 @@ export default function AnalysisBanner({ llm, totalRows }: { llm: LLMStatus; tot
       </span>
 
       <span className="min-w-0 truncate text-[var(--color-ink-secondary)] hidden sm:inline">
-        {isLLM ? llmText : (llm.note || "метрики посчитаны детерминированными правилами")}
+        {isLLM ? llmText : detText}
       </span>
 
       <span className="ml-auto flex items-center gap-2 shrink-0">
