@@ -94,7 +94,7 @@ export default function App() {
         <main className="flex-1 overflow-y-auto">
           {data && (
             <div className="no-print px-8 pt-6">
-              <AnalysisBanner llm={data.meta.llm} />
+              <AnalysisBanner llm={data.meta.llm} totalRows={data.meta.total_rows} />
             </div>
           )}
           <Suspense

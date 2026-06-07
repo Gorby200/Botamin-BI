@@ -8,8 +8,15 @@ import ScopeSelector from "./ScopeSelector";
  *  - A small segmented control on the right shows the analysis SCOPE (depth), with the
  *    active segment highlighted. It is informational (build-time flag), explained by the ⓘ.
  */
-export default function AnalysisBanner({ llm }: { llm: LLMStatus }) {
+export default function AnalysisBanner({ llm, totalRows }: { llm: LLMStatus; totalRows?: number }) {
   const isLLM = String(llm.mode || "").startsWith("llm");
+  const analyzed = llm.calls_analyzed.toLocaleString("ru-RU");
+  const total = totalRows ? totalRows.toLocaleString("ru-RU") : null;
+  // Clear, non-misleading: N substantive dialogues deep-analyzed by the LLM; ALL calls
+  // get the deterministic baseline. (Old "261 из 261 диалогов" read as "only 261 total".)
+  const llmText = total
+    ? `LLM-разбор содержательных диалогов: ${analyzed} из ${total} звонков · остальные — детерминированно`
+    : `LLM-разбор: ${analyzed} содержательных диалогов · остальные — детерминированно`;
   return (
     <div
       className={`flex items-center gap-3 rounded-[var(--radius-md)] border px-3.5 py-2 text-xs ${
@@ -24,9 +31,7 @@ export default function AnalysisBanner({ llm }: { llm: LLMStatus }) {
       </span>
 
       <span className="min-w-0 truncate text-[var(--color-ink-secondary)] hidden sm:inline">
-        {isLLM
-          ? `разобрано ${llm.calls_analyzed.toLocaleString("ru-RU")} из ${llm.calls_selected.toLocaleString("ru-RU")} диалогов`
-          : llm.note || "метрики посчитаны детерминированными правилами"}
+        {isLLM ? llmText : (llm.note || "метрики посчитаны детерминированными правилами")}
       </span>
 
       <span className="ml-auto flex items-center gap-2 shrink-0">
