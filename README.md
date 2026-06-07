@@ -422,12 +422,6 @@ Contributions are welcome! Areas for improvement:
 
 ---
 
-## 📝 License
-
-MIT License - see [LICENSE](LICENSE) for details.
-
----
-
 ## 🙏 Acknowledgments
 
 - **Design System:** Custom typography with Hanken Grotesk + Fraunces variable fonts
