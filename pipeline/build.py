@@ -131,17 +131,30 @@ def _extract_features(row: pd.Series) -> dict:
     }
 
 
+# Canonical outcomes + stage→outcome map. Applied at FLATTEN time (post-cache,
+# deterministic) so an LLM that emits a non-canonical/over-claimed outcome can't leak
+# through: every call ends up with exactly one valid outcome → outcomes sum == total rows.
+_VALID_OUTCOMES = {"no_contact", "contact_only", "refused", "consent",
+                   "offer_engaged", "meeting", "qualified"}
+_FS_TO_OUTCOME = {-1: "no_contact", 0: "contact_only", 1: "consent",
+                  2: "offer_engaged", 3: "meeting", 4: "qualified"}
+
+
 def _flatten(analysis: dict) -> dict:
     """Flatten the unified analysis contract into scalar/list columns for metrics."""
     v = analysis.get("voice", {})
     connected = bool(analysis.get("connected", False))
+    fs = int(analysis.get("furthest_stage", -1)) if connected else -1
+    outcome = str(analysis.get("outcome", "") or "")
+    if outcome not in _VALID_OUTCOMES:          # unknown string from the model → derive from stage
+        outcome = _FS_TO_OUTCOME.get(fs, "no_contact")
     return {
         "source": analysis.get("source", "deterministic"),
         "connected": connected,
         # Canonical: a non-connected call has NO stage. This keeps the per-call index
         # (furthest_stage >= 0) and the aggregate `engaged` count in exact agreement.
-        "furthest_stage": int(analysis.get("furthest_stage", -1)) if connected else -1,
-        "outcome": analysis.get("outcome", "no_contact"),
+        "furthest_stage": fs,
+        "outcome": outcome,
         "disqualified": bool(analysis.get("disqualified", False)),
         "end_attribution": analysis.get("end_attribution", ""),
         "loss_layer": analysis.get("loss_layer", "none"),

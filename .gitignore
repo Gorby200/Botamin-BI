@@ -11,8 +11,10 @@ venv/
 frontend/node_modules/
 frontend/dist/
 
-# Raw source data stays OUT of git (large + sensitive customer transcripts).
-data/raw.csv
+# NOTE (presentation mode): the raw CSV and the generated analytics JSON
+# (frontend/public/data/**) are BOTH committed — the dataset travels with the repo so
+# anyone can rebuild, and CI deploys the static site without calling the LLM.
+# ⚠ These contain real call transcripts — keep the repo PRIVATE if that data is sensitive.
 
 # NOTE: the generated analytics JSON (frontend/public/data/**) IS committed now —
 # we generate it locally and deploy a static site, so CI never calls the LLM.
