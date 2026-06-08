@@ -43,6 +43,9 @@ TYPOGRAPHY_DESIGN_SYSTEM.md
 superprompt_botamin_dashboard.md
 СОПРОВОДИТЕЛЬНАЯ_ЗАПИСКА.md
 
+# Служебная документация — живёт на диске, в репозиторий не попадает.
+docs/
+
 # ─── Presentation mode: these ARE committed (do NOT ignore) ──
 #   frontend/public/data/**  → сгенерированный JSON (статический деплой, CI не зовёт LLM)
 #   data/raw.csv             → датасет едет с репозиторием
