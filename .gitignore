@@ -1,28 +1,49 @@
-# Secrets
+# ─── Secrets ────────────────────────────────────────────────
 .env
+.env.*
+!.env.example
 
-# Python
+# ─── Python ─────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
 .venv/
 venv/
+.pytest_cache/
 
-# Node
+# ─── Node / frontend build ──────────────────────────────────
 frontend/node_modules/
 frontend/dist/
+frontend/tsconfig.tsbuildinfo
 
-# NOTE (presentation mode): the raw CSV and the generated analytics JSON
-# (frontend/public/data/**) are BOTH committed — the dataset travels with the repo so
-# anyone can rebuild, and CI deploys the static site without calling the LLM.
-# ⚠ These contain real call transcripts — keep the repo PRIVATE if that data is sensitive.
-
-# NOTE: the generated analytics JSON (frontend/public/data/**) IS committed now —
-# we generate it locally and deploy a static site, so CI never calls the LLM.
-# (Heads-up: these JSON files contain call transcripts/quotes — keep the repo private
-#  if that data is sensitive.)
-
-# LLM analysis cache
+# ─── LLM analysis cache (regenerated locally) ───────────────
 .llm_cache/
 
-# TS build cache
-frontend/tsconfig.tsbuildinfo
+# ─── Editor / local tooling (machine-specific) ──────────────
+.claude/
+.vscode/
+.idea/
+*.bat
+
+# ─── Service / debug artefacts (not part of the product) ────
+last_prompt.txt
+dump_llm_payload.py
+
+# ─── Internal dev-logs & superseded notes ───────────────────
+# Рабочие заметки времён сборки и устаревшие документы. Не нужны в репозитории —
+# актуальная документация: README.md, DEPLOYMENT.md.
+LLM_ARCHITECTURE_ANALYSIS.md
+LLM_IMPLEMENTATION_SUMMARY.md
+LLM_INTEGRATION_GUIDE.md
+LLM_PIPELINE_COMPLETE.md
+LLM_PIPELINE_FINAL_SUMMARY.md
+CUSTDEV_INTEGRATION_DECISION.md
+DATA_PIPELINE_VERIFICATION.md
+RESEARCH_PAGE_IMPLEMENTATION.md
+TYPOGRAPHY_DESIGN_SYSTEM.md
+superprompt_botamin_dashboard.md
+СОПРОВОДИТЕЛЬНАЯ_ЗАПИСКА.md
+
+# ─── Presentation mode: these ARE committed (do NOT ignore) ──
+#   frontend/public/data/**  → сгенерированный JSON (статический деплой, CI не зовёт LLM)
+#   data/raw.csv             → датасет едет с репозиторием
+#   ⚠ содержат реальные транскрипты — держите репозиторий ПРИВАТНЫМ, если данные чувствительны.
